@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo -e "\n🚀\x1b[36m 执行 Pre-commit hooks...\x1b[0m\n"
+pnpm lint-staged
+pnpm test
+echo -e "\n✅\x1b[32m Pre-commit hooks 执行完毕\x1b[0m\n"
