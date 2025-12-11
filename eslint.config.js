@@ -3,6 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import globals from 'globals';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,21 +12,16 @@ export default [
         files: ['src/**/*.ts', 'test/**/*.ts'],
         languageOptions: {
             parser: tsParser,
+            globals: {
+                ...globals.node,
+                ...globals.es2024,
+                ...globals.jest,
+                NodeJS: 'readonly',
+            },
             parserOptions: {
                 project: './tsconfig.json',
                 tsconfigRootDir: __dirname,
                 sourceType: 'module',
-            },
-            globals: {
-                console: 'readonly',
-                process: 'readonly',
-                describe: 'readonly',
-                it: 'readonly',
-                beforeEach: 'readonly',
-                beforeAll: 'readonly',
-                afterEach: 'readonly',
-                afterAll: 'readonly',
-                expect: 'readonly',
             },
         },
         plugins: {

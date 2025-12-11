@@ -24,7 +24,6 @@ describe('AppController (e2e)', () => {
 
         expect(res.body).toHaveProperty('status', 'ok');
         expect(res.body).toHaveProperty('timestamp');
-        // basic ISO string check
         expect(new Date(res.body.timestamp).toString()).not.toContain('Invalid');
     });
 });

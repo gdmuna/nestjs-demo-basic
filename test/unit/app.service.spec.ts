@@ -1,10 +1,20 @@
 import { AppService } from '@/app.service';
+import { PrismaService } from '@/common/prisma.service';
+import { Test, TestingModule } from '@nestjs/testing';
 
 describe('AppService', () => {
     let service: AppService;
+    let module: TestingModule;
 
-    beforeEach(() => {
-        service = new AppService();
+    beforeEach(async () => {
+        module = await Test.createTestingModule({
+            providers: [AppService, PrismaService],
+        }).compile();
+        service = module.get(AppService);
+    });
+
+    afterAll(async () => {
+        await module.close();
     });
 
     it('should be defined', () => {
@@ -13,5 +23,12 @@ describe('AppService', () => {
 
     it('should return "Hello World!" from getHello()', () => {
         expect(service.getHello()).toBe('Hello World!');
+    });
+
+    it('getHealth should return status ok and timestamp', async () => {
+        const res: any = await service.getHealth();
+        expect(res).toHaveProperty('status', 'ok');
+        expect(res).toHaveProperty('timestamp');
+        expect(new Date(res.timestamp).toString()).not.toContain('Invalid');
     });
 });

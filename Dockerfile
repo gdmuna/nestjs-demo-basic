@@ -58,6 +58,8 @@ COPY package.json prisma.config.ts ./
 EXPOSE 3000
 
 # 环境变量
+ARG GIT_COMMIT
+ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production
 ENV PORT=3000
 

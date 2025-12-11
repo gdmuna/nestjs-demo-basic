@@ -88,6 +88,7 @@ jobs:
           # 构建时传入环境变量
           build-args: |
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            GIT_COMMIT=${{ github.sha }}
 
       - name: Generate Summary
         run: |

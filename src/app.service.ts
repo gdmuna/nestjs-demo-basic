@@ -1,8 +1,53 @@
 import { Injectable } from '@nestjs/common';
+import { uptime } from 'node:process';
+import { PrismaService } from './common/prisma.service.js';
 
 @Injectable()
 export class AppService {
-    getHello(): string {
+    constructor(private readonly prismaService: PrismaService) {}
+    getHello() {
         return 'Hello World!';
+    }
+
+    async getHealth() {
+        const databaseHealth = await this.checkDatabaseHealth();
+        return {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: uptime(),
+            version: process.env.npm_package_version || 'N/A',
+            gitCommit: process.env.GIT_COMMIT || 'N/A',
+            components: {
+                database: {
+                    ...databaseHealth,
+                },
+            },
+        };
+    }
+
+    private async checkDatabaseHealth(timeout = 3000) {
+        const start = Date.now();
+        let timerId: NodeJS.Timeout | null = null;
+        try {
+            await Promise.race([
+                this.prismaService.$queryRaw`SELECT 1`,
+                new Promise(
+                    (_, reject) =>
+                        (timerId = setTimeout(() => reject(new Error('Database timeout')), timeout))
+                ),
+            ]);
+            return {
+                status: 'ok',
+                responseTimeMs: Date.now() - start,
+            };
+        } catch (error) {
+            return {
+                status: 'down',
+                responseTimeMs: Date.now() - start,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            };
+        } finally {
+            if (timerId) clearTimeout(timerId);
+        }
     }
 }

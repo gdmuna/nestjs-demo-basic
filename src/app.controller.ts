@@ -6,15 +6,12 @@ export class AppController {
     constructor(private readonly appService: AppService) {}
 
     @Get('hello')
-    getHello(): string {
+    getHello() {
         return this.appService.getHello();
     }
 
     @Get('health')
-    getHealth(): object {
-        return {
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-        };
+    async getHealth() {
+        return await this.appService.getHealth();
     }
 }
