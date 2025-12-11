@@ -74,12 +74,5 @@
 
     // 自动补全 .js 扩展名
     "moduleDetection": "force"
-  },
-
-  "ts-node": {
-    "esm": true,
-    "compilerOptions": {
-      "module": "ESNext"
-    }
   }
 }

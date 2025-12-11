@@ -30,7 +30,7 @@ export default {
     embeddedLanguageFormatting: 'auto',
     // 例外规则
     overrides: [
-        // 针对 YAML 文件使用 2 个空格缩进
+        // 针对 YAML/JSON 文件使用 2 个空格缩进
         {
             files: '*.{yaml,yml,json}',
             options: {
