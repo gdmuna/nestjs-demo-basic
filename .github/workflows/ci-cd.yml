@@ -91,7 +91,6 @@ jobs:
           tags: |
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ github.ref_name }}-${{ github.sha }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ github.run_number }}
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:v${{ steps.version.outputs.version }}
           # 构建时传入环境变量
           build-args: |
@@ -111,12 +110,11 @@ jobs:
           - **镜像仓库** : [Docker Hub/$DOCKER_USERNAME/$DOCKER_REPO_NAME](https://hub.docker.com/repository/docker/$DOCKER_USERNAME/$DOCKER_REPO_NAME)
           - **所属分支**: ${{ github.ref_name }}
           - **提交哈希**: ${{ github.sha }}
-          - **运行号**: ${{ github.run_number }}
 
           ### 📦 Docker 镜像
           - $DOCKER_USERNAME/$DOCKER_REPO_NAME:latest
           - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ github.ref_name }}-${{ github.sha }}
-          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ github.run_number }}
+          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:v${{ steps.version.outputs.version }}
 
           ### ⏰ 时间戳
           - 完成时间 (UTC): $TIMESTAMP_UTC
