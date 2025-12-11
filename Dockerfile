@@ -66,7 +66,7 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV npm_package_version=$APP_VERSION
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl --fail http://localhost:${PORT:-3000}/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl --fail http://localhost:${PORT:-3000}/health
 # 启动应用
 CMD ["node", "dist/src/main.js"]
