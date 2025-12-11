@@ -34,7 +34,7 @@ RUN pnpm build
 FROM node:22-slim
 
 # 安装依赖和 OpenSSL (运行时 Prisma Client 可能需要)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/* && npm install -g pnpm
+RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/* && npm install -g pnpm
 
 # 设置工作目录
 WORKDIR /app
@@ -58,15 +58,15 @@ COPY package.json prisma.config.ts ./
 EXPOSE 3000
 
 # 环境变量
-ARG GIT_COMMIT DATABASE_URL
+ARG GIT_COMMIT DATABASE_URL APP_VERSION
 ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL=$DATABASE_URL
+ENV npm_package_version=$APP_VERSION
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
-
+    CMD curl --fail http://localhost:${PORT:-3000}/health || exit 1
 # 启动应用
 CMD ["node", "dist/src/main.js"]
