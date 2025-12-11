@@ -58,10 +58,11 @@ COPY package.json prisma.config.ts ./
 EXPOSE 3000
 
 # 环境变量
-ARG GIT_COMMIT
+ARG GIT_COMMIT DATABASE_URL
 ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DATABASE_URL=$DATABASE_URL
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

@@ -3,7 +3,7 @@ import { PrismaService } from '@/common/prisma.service';
 
 describe('PrismaService', () => {
     let service: PrismaService;
-    let module: TestingModule
+    let module: TestingModule;
 
     beforeEach(async () => {
         module = await Test.createTestingModule({
@@ -14,7 +14,7 @@ describe('PrismaService', () => {
 
     afterAll(async () => {
         await module.close();
-    })
+    });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
