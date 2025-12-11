@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';
 import { PrismaService } from './common/prisma.service.js';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
-    constructor(private readonly prismaService: PrismaService) {}
+    constructor(
+        private readonly prismaService: PrismaService,
+        private readonly configService: ConfigService
+    ) {}
     getHello() {
         return 'Hello World!';
     }
@@ -15,8 +19,8 @@ export class AppService {
             status: 'ok',
             timestamp: new Date().toISOString(),
             uptime: uptime(),
-            version: process.env.npm_package_version || 'N/A',
-            gitCommit: process.env.GIT_COMMIT || 'N/A',
+            version: this.configService.get('npm_package_version', 'N/A'),
+            gitCommit: this.configService.get('GIT_COMMIT', 'N/A'),
             components: {
                 database: {
                     ...databaseHealth,
