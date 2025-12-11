@@ -1,5 +1,5 @@
 {
-  "name": "nestjs-demo-advanced",
+  "name": "nestjs-demo-basic",
   "private": true,
   "version": "0.1.0",
   "description": "一个使用 NestJS 构建的示例项目",
