@@ -1,4 +1,4 @@
-# nest-demo
+# nest-demo-advanced
 
 一个极简的 NestJS 后端服务示例框架。
 
@@ -43,13 +43,7 @@ pnpm build
 pnpm start:prod
 
 # 使用自定义端口（默认 3000）
-PORT=4000 pnpm start:prod
-```
-
-> Windows (cmd.exe) 上设置环境变量并运行生产模式的等价命令：
-
-```bash
-set PORT=4000&& pnpm start:prod
+set PORT=4000 && pnpm start:prod
 ```
 
 ## API 接口
