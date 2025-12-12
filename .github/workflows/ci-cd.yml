@@ -12,6 +12,7 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
       DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://username:password@host:port/dbName?schema=public' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,8 +42,6 @@ jobs:
           echo "📦 Application Version: $VERSION"
 
       - name: Generate Prisma Client
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm prisma generate
 
       - name: Format & Lint code

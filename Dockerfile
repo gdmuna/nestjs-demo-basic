@@ -22,8 +22,9 @@ COPY src ./src
 COPY tsconfig.json tsconfig.build.json nest-cli.json prisma.config.ts ./
 COPY prisma ./prisma
 
+# 数据库URL占位符，你不应在构建镜像时使用真实的数据库URL
+# 但需要一个占位符以便生成Prisma Client，且该占位符所使用的数据库类型应与实际运行时相同
 ARG DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
-# ENV DATABASE_URL=$DATABASE_URL
 
 # 生成 Prisma Client
 RUN pnpm prisma generate
@@ -54,7 +55,6 @@ COPY package.json prisma.config.ts ./
 
 # 环境变量
 ARG GIT_COMMIT APP_VERSION
-ARG DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production
 ENV PORT=3000
