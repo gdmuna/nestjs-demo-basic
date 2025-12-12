@@ -27,7 +27,6 @@ async function bootstrap() {
         process.exit(1);
     });
     logger.log(`✅ 应用已启动: http://localhost:${port}`);
-    logger.log(`🚀 数据库URL: ${process.env.DATABASE_URL || 'unknow'}`);
 }
 
 bootstrap();
