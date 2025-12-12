@@ -94,7 +94,6 @@ jobs:
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.version.outputs.version }}
           # 构建时传入环境变量
           build-args: |
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
             GIT_COMMIT=${{ github.sha }}
             APP_VERSION=${{ steps.version.outputs.version }}
 
