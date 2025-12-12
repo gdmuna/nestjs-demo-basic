@@ -70,9 +70,6 @@
     "noFallthroughCasesInSwitch": true,
 
     // 每个文件作为单独的模块编译（提高兼容性）
-    "isolatedModules": true,
-
-    // 自动补全 .js 扩展名
-    "moduleDetection": "force"
+    "isolatedModules": true
   }
 }
