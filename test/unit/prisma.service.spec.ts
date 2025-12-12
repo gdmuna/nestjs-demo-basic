@@ -12,8 +12,16 @@ describe('PrismaService', () => {
         service = module.get(PrismaService);
     });
 
+    afterEach(async () => {
+        if (service) {
+            await service.$disconnect();
+        }
+    });
+
     afterAll(async () => {
-        await module.close();
+        if (module) {
+            await module.close();
+        }
     });
 
     it('should be defined', () => {

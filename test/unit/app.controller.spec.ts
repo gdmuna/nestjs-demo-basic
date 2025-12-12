@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 describe('AppController (unit)', () => {
     let controller: AppController;
     let module: TestingModule;
+    let prismaService: PrismaService;
 
     beforeEach(async () => {
         module = await Test.createTestingModule({
@@ -14,14 +15,19 @@ describe('AppController (unit)', () => {
             providers: [AppService, PrismaService, ConfigService],
         }).compile();
         controller = module.get(AppController);
+        prismaService = module.get(PrismaService);
     });
 
     afterEach(async () => {
-        await module.get(PrismaService).$disconnect();
+        if (prismaService) {
+            await prismaService.$disconnect();
+        }
     });
 
     afterAll(async () => {
-        await module.close();
+        if (module) {
+            await module.close();
+        }
     });
 
     it('should be defined', () => {
