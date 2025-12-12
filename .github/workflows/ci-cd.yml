@@ -48,10 +48,10 @@ jobs:
       - name: Format & Lint code
         run: |
           echo "📝 格式化代码"
-          pnpm prettier --write .
+          pnpm prettier --check .
           echo "✓ 格式化完成"
           echo "✅ 质量检查"
-          pnpm eslint --fix
+          pnpm eslint
           echo "✓ 质量检查完成"
 
       - name: Run tests with coverage
