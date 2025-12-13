@@ -31,13 +31,13 @@ export class AppService {
 
     private async checkDatabaseHealth(timeout = 3000) {
         const start = Date.now();
-        let timerId: NodeJS.Timeout | null = null;
+        let timer: NodeJS.Timeout | null = null;
         try {
             await Promise.race([
                 this.prismaService.$queryRaw`SELECT 1`,
                 new Promise(
                     (_, reject) =>
-                        (timerId = setTimeout(() => reject(new Error('Database timeout')), timeout))
+                        (timer = setTimeout(() => reject(new Error('Database timeout')), timeout))
                 ),
             ]);
             return {
@@ -51,7 +51,7 @@ export class AppService {
                 error: error instanceof Error ? error.message : 'Unknown error',
             };
         } finally {
-            if (timerId) clearTimeout(timerId);
+            if (timer) clearTimeout(timer);
         }
     }
 }
