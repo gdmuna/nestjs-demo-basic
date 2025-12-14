@@ -72,3 +72,33 @@ pnpm build
 ## 许可证
 
 MIT
+
+```mermaid
+flowchart LR
+    subgraph ClientSide
+        Client[Web / 小程序 / App]
+    end
+
+    subgraph IAM
+        Casdoor["Casdoor\n(IAM / SSO)"]
+    end
+
+    subgraph Backend
+        Auth["Auth Module\n(NestJS 封装层)"]
+        User[User Module]
+        Verify[Alumni Verification Module]
+        Perm[Permission Module]
+        Biz[Business Services]
+    end
+
+    Client -->|OIDC / OAuth| Casdoor
+    Casdoor -->|Access Token / ID Token| Client
+
+    Client -->|API Request + Token| Auth
+    Auth -->|Verify Token| Casdoor
+    Auth -->|User Mapping| User
+    Auth -->|Auth Context| Biz
+
+    Biz --> Verify
+    Biz --> Perm
+```
