@@ -1,3 +1,4 @@
 #!/bin/sh
 
 node .husky/post-commit.js
+exit 0
