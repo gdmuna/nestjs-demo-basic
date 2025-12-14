@@ -1,6 +1,22 @@
 #!/bin/sh
 
-echo -e "\n🚀\x1b[36m 执行 Pre-commit hooks...\x1b[0m\n"
+GREEN="\033[32m"; YELLOW="\033[33m"; RESET="\033[0m"
+
+printf "%-12b  %b\n" "\n${GREEN}[GitHook]" "[LOG] 执行 Pre-commit hook...${RESET}"
+
+if git diff --cached --quiet; then
+    printf "%-12b  %b\n" "${YELLOW}[GitHook]" "[WARN] 无暂存文件，跳出 Pre-commit hooks${RESET}"
+    exit 0
+fi
+
 pnpm lint-staged
-pnpm test
-echo -e "\n✅\x1b[32m Pre-commit hooks 执行完毕\x1b[0m\n"
+
+staged_has_scripts=$(git diff --cached --name-only -- '*.js' '*.ts')
+if [ -z "$staged_has_scripts" ]; then
+    printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] 无暂存的 .js/.ts 文件，跳过测试${RESET}"
+else
+    pnpm test
+fi
+
+printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] Pre-commit hooks 执行完毕${RESET}"
+exit 0
