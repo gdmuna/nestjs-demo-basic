@@ -6,13 +6,17 @@ on:
   # pull_request:
   #   branches: [main]
 
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://username:password@host:port/dbName?schema=public' }}
+
 jobs:
-  lint-test-build-publish:
+  lint-and-test:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
       DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://username:password@host:port/dbName?schema=public' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -73,6 +77,16 @@ jobs:
           name: coverage-report
           path: coverage/
 
+  build-and-publish:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
+      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -90,11 +104,11 @@ jobs:
           tags: |
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ github.ref_name }}-${{ github.sha }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.lint-and-test.outputs.version }}
           # 构建时传入环境变量
           build-args: |
             GIT_COMMIT=${{ github.sha }}
-            APP_VERSION=${{ steps.version.outputs.version }}
+            APP_VERSION=${{ needs.lint-and-test.outputs.version }}
 
       - name: Generate Summary
         run: |
@@ -112,7 +126,36 @@ jobs:
           ### 📦 Docker 镜像
           - $DOCKER_USERNAME/$DOCKER_REPO_NAME:latest
           - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ github.ref_name }}-${{ github.sha }}
-          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ steps.version.outputs.version }}
+          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ needs.lint-and-test.outputs.version }}
+
+          ### ⏰ 时间戳
+          - 完成时间 (UTC): $TIMESTAMP_UTC
+          - 完成时间 (China/Asia/Shanghai): $TIMESTAMP_CN
+          EOF
+
+  Generate-Summary:
+    needs:
+      - lint-and-test
+      - build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 CI/CD Pipeline Summary
+
+          ### ✅ 构建信息
+          - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          - **镜像仓库** : [Docker Hub/$DOCKER_USERNAME/$DOCKER_REPO_NAME](https://hub.docker.com/repository/docker/$DOCKER_USERNAME/$DOCKER_REPO_NAME)
+          - **所属分支**: ${{ github.ref_name }}
+          - **提交哈希**: ${{ github.sha }}
+
+          ### 📦 Docker 镜像
+          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:latest
+          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ github.ref_name }}-${{ github.sha }}
+          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ needs.lint-and-test.outputs.version }}
 
           ### ⏰ 时间戳
           - 完成时间 (UTC): $TIMESTAMP_UTC
