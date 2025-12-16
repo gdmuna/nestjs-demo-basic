@@ -10,12 +10,21 @@ RUN npm install -g pnpm
 # 设置工作目录
 WORKDIR /app
 
-# 复制 package.json 和 pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml ./
+# 复制 package.json
+COPY package.json ./
 
-# 安装生产依赖 (--prod flag, 跳过 prepare 脚本避免 husky 错误)
+# 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请取消下一行的注释
+# COPY pnpm-lock.yaml ./
+
+# ========== 安装生产依赖 (--ignore-scripts 跳过 prepare 脚本避免 husky 错误) ==========
+
+# 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请取消下一行的注释
 # RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+# 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请注释掉下一行
 RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
+
+# ========== 安装生产依赖 (--ignore-scripts 跳过 prepare 脚本避免 husky 错误) ==========
 
 # 复制源代码
 COPY src ./src
@@ -47,11 +56,8 @@ COPY --from=builder /app/node_modules ./node_modules
 # 从构建阶段复制构建输出
 COPY --from=builder /app/dist ./dist
 
-# 复制 prisma 配置文件 (运行时可能需要)
-# COPY prisma ./prisma
-
 # 复制 package.json (用于识别项目信息)
-COPY package.json prisma.config.ts ./
+COPY package.json ./
 
 # 环境变量
 ARG GIT_COMMIT APP_VERSION

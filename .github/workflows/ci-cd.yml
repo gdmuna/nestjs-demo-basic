@@ -7,6 +7,8 @@ on:
   #   branches: [main]
 
 env:
+  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
+  DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
   DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://username:password@host:port/dbName?schema=public' }}
 
 jobs:
@@ -14,9 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-    env:
-      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
-      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -32,13 +31,13 @@ jobs:
           node-version: '22'
           # cache: 'pnpm'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           echo "📥 安装项目依赖"
           pnpm install
           echo "✓ 依赖安装完成"
 
-      - name: Extract version from package.json
+      - name: Extract Version from Package.json
         id: version
         run: |
           VERSION=$(node -e "console.log(require('./package.json').version)")
@@ -48,7 +47,7 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma generate
 
-      - name: Format & Lint code
+      - name: Format & Lint Code
         run: |
           echo "📝 格式化代码"
           pnpm prettier --check .
@@ -57,7 +56,7 @@ jobs:
           pnpm eslint
           echo "✓ 质量检查完成"
 
-      - name: Run tests with coverage
+      - name: Run Tests with Coverage
         run: |
           echo "🧪 运行测试"
           pnpm test --ci --coverage
@@ -71,7 +70,7 @@ jobs:
       #     path: coverage/test-results.json
       #     reporter: jest-junit
 
-      - name: Upload coverage artifact
+      - name: Upload Coverage Artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -80,9 +79,6 @@ jobs:
   build-and-publish:
     needs: lint-and-test
     runs-on: ubuntu-latest
-    env:
-      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
-      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -109,29 +105,6 @@ jobs:
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             APP_VERSION=${{ needs.lint-and-test.outputs.version }}
-
-      - name: Generate Summary
-        run: |
-          TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## 🚀 CI/CD Pipeline Summary
-
-          ### ✅ 构建信息
-          - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **镜像仓库** : [Docker Hub/$DOCKER_USERNAME/$DOCKER_REPO_NAME](https://hub.docker.com/repository/docker/$DOCKER_USERNAME/$DOCKER_REPO_NAME)
-          - **所属分支**: ${{ github.ref_name }}
-          - **提交哈希**: ${{ github.sha }}
-
-          ### 📦 Docker 镜像
-          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:latest
-          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ github.ref_name }}-${{ github.sha }}
-          - $DOCKER_USERNAME/$DOCKER_REPO_NAME:${{ needs.lint-and-test.outputs.version }}
-
-          ### ⏰ 时间戳
-          - 完成时间 (UTC): $TIMESTAMP_UTC
-          - 完成时间 (China/Asia/Shanghai): $TIMESTAMP_CN
-          EOF
 
   Generate-Summary:
     needs:
