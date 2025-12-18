@@ -13,6 +13,7 @@ env:
 
 jobs:
   lint-and-test:
+    name: Lint and test
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -28,16 +29,17 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: 22
+          # 若你的仓库中存在 pnpm-lock.yaml，请启用下一行缓存以加速依赖安装
           # cache: 'pnpm'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           echo "📥 安装项目依赖"
           pnpm install
           echo "✓ 依赖安装完成"
 
-      - name: Extract Version from Package.json
+      - name: Extract version from package.json
         id: version
         run: |
           VERSION=$(node -e "console.log(require('./package.json').version)")
@@ -47,7 +49,7 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma generate
 
-      - name: Format & Lint Code
+      - name: Format & Lint code
         run: |
           echo "📝 格式化代码"
           pnpm prettier --check .
@@ -56,7 +58,7 @@ jobs:
           pnpm eslint
           echo "✓ 质量检查完成"
 
-      - name: Run Tests with Coverage
+      - name: Run tests with coverage
         run: |
           echo "🧪 运行测试"
           pnpm test --ci --coverage
@@ -70,20 +72,21 @@ jobs:
       #     path: coverage/test-results.json
       #     reporter: jest-junit
 
-      - name: Upload Coverage Artifact
+      - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
 
   build-and-publish:
+    name: Build and publish Docker image
     needs: lint-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
@@ -92,7 +95,7 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -107,12 +110,13 @@ jobs:
             APP_VERSION=${{ needs.lint-and-test.outputs.version }}
 
   Generate-Summary:
+    name: Generate summary
     needs:
       - lint-and-test
       - build-and-publish
     runs-on: ubuntu-latest
     steps:
-      - name: Generate Summary
+      - name: Generate summary
         run: |
           TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
