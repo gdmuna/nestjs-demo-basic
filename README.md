@@ -4,6 +4,10 @@
 
 在README修了一个bug（hotfix）(?
 
+main 继续演进~
+
+又修了个bug(?
+
 ## 功能
 
 - 基本的 NestJS 应用结构
