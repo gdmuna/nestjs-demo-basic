@@ -1,0 +1,199 @@
+name: CI/CD - Development
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint-and-test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    environment: development
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          echo "📥 安装项目依赖"
+          pnpm install
+          echo "✓ 依赖安装完成"
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Application Version: $VERSION"
+
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm prisma generate
+
+      - name: Format & Lint code
+        run: |
+          echo "📝 格式化代码"
+          pnpm prettier --check .
+          echo "✓ 格式化完成"
+          echo "✅ 质量检查"
+          pnpm eslint
+          echo "✓ 质量检查完成"
+
+      - name: Run tests with coverage
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🧪 运行测试"
+          pnpm test --ci --coverage
+          echo "✓ 测试完成"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-dev
+          path: coverage/
+
+  build-and-publish:
+    name: Build and publish Docker image
+    needs: lint-and-test
+    # 只在 push 到 dev 分支时发布，PR 不发布
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
+      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ github.sha }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            APP_VERSION=${{ needs.lint-and-test.outputs.version }}
+            ENVIRONMENT=development
+
+  generate-summary:
+    name: Generate summary
+    needs:
+      - lint-and-test
+      - build-and-publish
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
+      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+    steps:
+      - name: Generate summary
+        run: |
+          TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+
+          # 获取 job 状态
+          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+          BUILD_PUBLISH_STATUS="${{ needs.build-and-publish.result }}"
+
+          # 状态图标映射
+          case "$LINT_TEST_STATUS" in
+            success) LINT_ICON="✅" ;;
+            failure) LINT_ICON="❌" ;;
+            cancelled) LINT_ICON="🚫" ;;
+            skipped) LINT_ICON="⏭️" ;;
+            *) LINT_ICON="❓" ;;
+          esac
+
+          case "$BUILD_PUBLISH_STATUS" in
+            success) BUILD_ICON="✅" ;;
+            failure) BUILD_ICON="❌" ;;
+            cancelled) BUILD_ICON="🚫" ;;
+            skipped) BUILD_ICON="⏭️" ;;
+            *) BUILD_ICON="❓" ;;
+          esac
+
+          # 动态标题
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            TITLE="## 🧪 Development CI Summary"
+            EVENT_INFO="- **PR**: #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+          - **源分支**: ${{ github.head_ref }}
+          - **目标分支**: ${{ github.base_ref }}"
+          else
+            TITLE="## 🚀 Development CI/CD Summary"
+            EVENT_INFO="- **所属分支**: ${{ github.ref_name }}"
+          fi
+
+          # 生成统一的 summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          $TITLE
+
+          ### 📋 基本信息
+          - **环境**: Development
+          - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          $EVENT_INFO
+          - **提交哈希**: [\`${GITHUB_SHA:0:8}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+
+          ### 📝 执行状态
+          | Job | 状态 | 结果 |
+          |-----|------|------|
+          | Lint & Test | $LINT_ICON | $LINT_TEST_STATUS |
+          | Build & Publish | $BUILD_ICON | $BUILD_PUBLISH_STATUS |
+
+          EOF
+
+          # 如果构建成功，显示镜像信息
+          if [ "$BUILD_PUBLISH_STATUS" == "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### 📦 Docker 镜像
+          - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
+          - **镜像标签**:
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${GITHUB_SHA:0:8}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}\`
+
+          EOF
+          elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### ℹ️ Docker 镜像
+          - 镜像构建已跳过（仅在 push 到 dev 分支时构建）
+
+          EOF
+          fi
+
+          # 时间戳
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### ⏰ 时间戳
+          - **完成时间 (UTC)**: $TIMESTAMP_UTC
+          - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
+          EOF
