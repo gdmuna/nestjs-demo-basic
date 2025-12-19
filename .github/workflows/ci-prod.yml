@@ -1,0 +1,130 @@
+name: CI - Production Pull Request
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint-and-test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_USER: ci_test
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: nestjs_demo_basic_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          echo "📥 安装项目依赖"
+          pnpm install
+          echo "✓ 依赖安装完成"
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Application Version: $VERSION"
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Format & Lint code
+        run: |
+          echo "📝 格式化代码"
+          pnpm prettier --check .
+          echo "✓ 格式化完成"
+          echo "✅ 质量检查"
+          pnpm eslint
+          echo "✓ 质量检查完成"
+
+      - name: Run tests with coverage
+        run: |
+          echo "🧪 运行测试"
+          pnpm test --ci --coverage
+          echo "✓ 测试完成"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-dev
+          path: coverage/
+
+  generate-summary:
+    name: Generate summary
+    needs: lint-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - name: Generate summary
+        run: |
+          TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+
+          # 获取 job 状态
+          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+
+          # 状态图标映射
+          case "$LINT_TEST_STATUS" in
+            success) LINT_ICON="✅" ;;
+            failure) LINT_ICON="❌" ;;
+            cancelled) LINT_ICON="🚫" ;;
+            skipped) LINT_ICON="⏭️" ;;
+            *) LINT_ICON="❓" ;;
+          esac
+
+          # 生成统一的 summary
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🧪 CI - Production Pull Request Summary
+
+          ### 📋 基本信息
+          - **触发事件**: pull_request
+          - **环境**: production
+          - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          - **PR**: #${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}
+          - **源分支**: [${{ github.head_ref }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.head_ref }})
+          - **目标分支**: [${{ github.base_ref }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.base_ref }})
+          - **提交哈希**: [`${GITHUB_SHA:0:7}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+
+          ### 📝 执行状态
+          | Job | 状态 |
+          |-----|------|
+          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+
+          ### ⏰ 时间戳
+          - **完成时间 (UTC)**: $TIMESTAMP_UTC
+          - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
+          EOF
