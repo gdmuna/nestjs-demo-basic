@@ -114,6 +114,7 @@ jobs:
       - build-and-publish
     if: always()
     runs-on: ubuntu-latest
+    environment: production
     env:
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
       DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
@@ -166,11 +167,10 @@ jobs:
           - **提交哈希**: [\`${GITHUB_SHA:0:8}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
           ### 📝 执行状态
-          | Job | 状态 | 结果 |
-          |-----|------|------|
-          | Lint & Test | $LINT_ICON | $LINT_TEST_STATUS |
-          | Build & Publish | $BUILD_ICON | $BUILD_PUBLISH_STATUS |
-
+          | Job | 状态 |
+          |-----|------|
+          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+          | Build and publish Docker image | $BUILD_ICON $BUILD_PUBLISH_STATUS |
           EOF
 
           # 如果构建成功，显示镜像信息
@@ -180,7 +180,7 @@ jobs:
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
             - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${GITHUB_SHA:0:8}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${GITHUB_SHA:0:7}\`
             - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}\`
 
           EOF
