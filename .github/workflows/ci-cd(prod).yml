@@ -1,14 +1,16 @@
-name: CI/CD - Development
+name: CI/CD - Production
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
 
 jobs:
   lint-and-test:
     name: Lint and test
     runs-on: ubuntu-latest
-    environment: development
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -40,8 +42,6 @@ jobs:
           echo "📦 Application Version: $VERSION"
 
       - name: Generate Prisma Client
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm prisma generate
 
       - name: Format & Lint code
@@ -54,8 +54,6 @@ jobs:
           echo "✓ 质量检查完成"
 
       - name: Run tests with coverage
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "🧪 运行测试"
           pnpm test --ci --coverage
@@ -64,26 +62,28 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-dev
+          name: coverage-report
           path: coverage/
 
   build-and-publish:
     name: Build and publish Docker image
     needs: lint-and-test
-    if: "contains(github.event.head_commit.message, '[deploy]')"
+    if: "!contains(github.event.head_commit.message, '[skip deploy]')"
     runs-on: ubuntu-latest
-    environment: development
+    environment: production
     env:
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
       DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
-      RUN_PORT: ${{ vars.RUN_PORT || 3000 }}
+      RUN_PORT: ${{ vars.RUN_PORT || 3001 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract short SHA
-        id: short-sha
-        run: echo "sha7=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+      - name: Extract short SHA and timestamp
+        id: build-info
+        run: |
+          echo "sha7=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v3
@@ -101,13 +101,13 @@ jobs:
           push: true
           tags: |
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-latest
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ steps.short-sha.outputs.sha7 }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-latest
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${{ steps.build-info.outputs.timestamp }}-${{ steps.build-info.outputs.sha7 }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${{ needs.lint-and-test.outputs.version }}
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             APP_VERSION=${{ needs.lint-and-test.outputs.version }}
-            NODE_ENV=development
+            NODE_ENV=production
             PORT=${{ env.RUN_PORT }}
 
   generate-summary:
@@ -117,7 +117,7 @@ jobs:
       - build-and-publish
     if: always()
     runs-on: ubuntu-latest
-    environment: development
+    environment: production
     env:
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
       DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
@@ -150,14 +150,14 @@ jobs:
 
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## 🚀 CI/CD - Development Summary
-          ### 📋 基本信息
+          # 🚀 CI/CD 流程报告 - Production
+          ## 📋 基本信息
           - **触发事件**: push
-          - **环境**: development
+          - **环境**: production
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          ### 📝 执行状态
+          ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
           | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
@@ -167,24 +167,37 @@ jobs:
           # 如果构建成功，显示镜像信息
           if [ "$BUILD_PUBLISH_STATUS" == "success" ]; then
             cat >> $GITHUB_STEP_SUMMARY << EOF
-          ### 📦 Docker 镜像
+          ## 📦 Docker 镜像
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
             - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-latest\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${GITHUB_SHA:0:7}\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-latest\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${GITHUB_SHA:0:7}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${{ needs.lint-and-test.outputs.version }}\`
           EOF
+
           elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then
             cat >> $GITHUB_STEP_SUMMARY << EOF
-          ### ℹ️ Docker 镜像
+          ## ℹ️ Docker 镜像
           - 镜像构建已跳过
+          EOF
+
+          elif [ "$BUILD_PUBLISH_STATUS" == "failure" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❗ Docker 镜像
+          - 镜像构建失败，请检查日志以获取详细信息
+          EOF
+
+          elif [ "$BUILD_PUBLISH_STATUS" == "cancelled" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❗ Docker 镜像
+          - 镜像构建被取消
           EOF
           fi
 
           # 时间戳
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          ### ⏰ 时间戳
+          ## ⏰ 时间戳
           - **完成时间 (UTC)**: $TIMESTAMP_UTC
           - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
           EOF
