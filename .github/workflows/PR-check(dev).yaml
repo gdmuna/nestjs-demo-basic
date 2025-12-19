@@ -1,8 +1,8 @@
-name: Pull Request Check - Production
+name: Pull Request Check - Development
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev]
     types: [opened, synchronize, reopened]
 
 jobs:
@@ -43,6 +43,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
+          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
+          # cache: 'pnpm'
 
       - name: Install dependencies
         run: |
@@ -88,6 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
+
     steps:
       - name: Generate summary
         run: |
@@ -108,10 +111,10 @@ jobs:
 
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🧪 PR 预检流程报告 - Production
+          # 🧪 PR 预检流程报告 - Development
           ## 📋 基本信息
           - **触发事件**: pull_request
-          - **环境**: production
+          - **环境**: development
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
           - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
