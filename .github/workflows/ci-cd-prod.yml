@@ -147,13 +147,13 @@ jobs:
 
           # 动态标题
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            TITLE="## 🧪 Production CI Summary"
+            TITLE="## 🧪 CI - Production Summary"
             EVENT_INFO="- **PR**: #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
           - **源分支**: ${{ github.head_ref }}
           - **目标分支**: ${{ github.base_ref }}"
           else
-            TITLE="## 🚀 Production CI/CD Summary"
-            EVENT_INFO="- **所属分支**: ${{ github.ref_name }}"
+            TITLE="## 🚀 CI/CD - Production Summary"
+            EVENT_INFO="- **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})"
           fi
 
           # 生成统一的 summary
@@ -161,10 +161,10 @@ jobs:
           $TITLE
 
           ### 📋 基本信息
-          - **环境**: Development
+          - **环境**: production
           - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           $EVENT_INFO
-          - **提交哈希**: [\`${GITHUB_SHA:0:8}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **提交哈希**: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
           ### 📝 执行状态
           | Job | 状态 |
