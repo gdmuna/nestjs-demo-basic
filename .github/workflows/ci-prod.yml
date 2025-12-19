@@ -107,9 +107,8 @@ jobs:
           esac
 
           # 生成统一的 summary
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🧪 CI - Production Pull Request Summary
-
           ### 📋 基本信息
           - **触发事件**: pull_request
           - **环境**: production
@@ -117,13 +116,11 @@ jobs:
           - **PR**: #${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}
           - **源分支**: [${{ github.head_ref }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.head_ref }})
           - **目标分支**: [${{ github.base_ref }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.base_ref }})
-          - **提交哈希**: [`${GITHUB_SHA:0:7}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-
+          - **提交哈希**: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           ### 📝 执行状态
           | Job | 状态 |
           |-----|------|
           | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
-
           ### ⏰ 时间戳
           - **完成时间 (UTC)**: $TIMESTAMP_UTC
           - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN

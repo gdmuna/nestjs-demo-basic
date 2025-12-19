@@ -146,7 +146,7 @@ jobs:
           esac
 
           # 生成统一的 summary
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🚀 CI/CD - Production Summary
 
           ### 📋 基本信息
