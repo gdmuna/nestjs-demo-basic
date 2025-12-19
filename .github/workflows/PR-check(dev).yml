@@ -114,9 +114,7 @@ jobs:
           - **环境**: development
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
-          - **源分支**: [${{ github.event.pull_request.head.ref }}](https://github.com/${{ github.event.pull_request.head.repo.full_name }}/tree/${{ github.event.pull_request.head.ref }})
-          - **目标分支**: [${{ github.base_ref }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.base_ref }})
-          - **源分支 vs 目标分支**: [${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/files)
+          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           ## 📝 执行状态
           | Job | 状态 |
