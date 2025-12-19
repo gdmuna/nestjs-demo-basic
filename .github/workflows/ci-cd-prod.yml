@@ -68,6 +68,7 @@ jobs:
   build-and-publish:
     name: Build and publish Docker image
     needs: lint-and-test
+    if: "!contains(github.event.head_commit.message, '[skip deploy]')"
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -154,7 +155,7 @@ jobs:
           - **环境**: production
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
-          - **提交哈希**: [\`${GITHUB_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
           ### 📝 执行状态
           | Job | 状态 |
