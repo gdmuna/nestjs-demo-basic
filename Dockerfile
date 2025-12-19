@@ -66,10 +66,10 @@ ARG NODE_ENV=production
 ARG PORT=3000
 
 # 环境变量
-ENV GIT_COMMIT=GIT_COMMIT
-ENV NODE_ENV=NODE_ENV
-ENV npm_package_version=APP_VERSION
-ENV PORT=PORT
+ENV GIT_COMMIT=$GIT_COMMIT
+ENV NODE_ENV=$NODE_ENV
+ENV npm_package_version=$APP_VERSION
+ENV PORT=$PORT
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
