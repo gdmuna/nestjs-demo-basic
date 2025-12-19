@@ -59,12 +59,17 @@ COPY --from=builder /app/dist ./dist
 # 复制 package.json (用于识别项目信息)
 COPY package.json ./
 
+# 构建参数
+ARG GIT_COMMIT=unknown
+ARG APP_VERSION=0.0.0
+ARG NODE_ENV=production
+ARG PORT=3000
+
 # 环境变量
-ARG GIT_COMMIT APP_VERSION NODE_ENV PORT
-ENV GIT_COMMIT=${GIT_COMMIT:-unknown}
-ENV NODE_ENV=${NODE_ENV:-production}
-ENV npm_package_version=${APP_VERSION:-0.0.0}
-ENV PORT=${PORT:-3000}
+ENV GIT_COMMIT=GIT_COMMIT
+ENV NODE_ENV=NODE_ENV
+ENV npm_package_version=APP_VERSION
+ENV PORT=PORT
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
