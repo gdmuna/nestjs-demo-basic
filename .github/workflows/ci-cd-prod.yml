@@ -161,6 +161,7 @@ jobs:
           $TITLE
 
           ### 📋 基本信息
+          - **触发事件**: ${{ github.event_name }}
           - **环境**: production
           - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           $EVENT_INFO
@@ -179,9 +180,9 @@ jobs:
           ### 📦 Docker 镜像
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${GITHUB_SHA:0:7}\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:dev-${{ needs.lint-and-test.outputs.version }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${GITHUB_SHA:0:7}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:prod-${{ needs.lint-and-test.outputs.version }}\`
 
           EOF
           elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then

@@ -160,6 +160,7 @@ jobs:
           $TITLE
 
           ### 📋 基本信息
+          - **触发事件**: ${{ github.event_name }}
           - **环境**: development
           - **代码仓库**: [GitHub/${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           $EVENT_INFO
