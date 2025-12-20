@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build-info.outputs.version }}
+      sha7: ${{ steps.build-info.outputs.sha7 }}
+      timestamp: ${{ steps.build-info.outputs.timestamp }}
       snapshot-tag: ${{ steps.build-info.outputs.snapshot-tag }}
-      tag-latest: ${{ steps.build-info.outputs.tag-latest }}
-      tag-timestampAndSha7: ${{ steps.build-info.outputs.tag-timestampAndSha7 }}
-      tag-version: ${{ steps.build-info.outputs.tag-version }}
+      docker-image-snapshot-tag: ${{ steps.build-info.outputs.docker-image-snapshot-tag }}
 
     steps:
       - name: Checkout
@@ -34,14 +34,13 @@ jobs:
           SHA7=${GITHUB_SHA:0:7}
           TIMESTAMP=$(date +%Y%m%d)
           SNAPSHOT_TAG="v${VERSION}-snapshot-${TIMESTAMP}-${SHA7}"
+          DOCKER_IMAGE_SNAPSHOT_TAG="${VERSION}-snapshot-${TIMESTAMP}-${SHA7}"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "sha7=$SHA7" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "snapshot-tag=$SNAPSHOT_TAG" >> $GITHUB_OUTPUT
-          echo "tag-latest=snapshot-latest" >> $GITHUB_OUTPUT
-          echo "tag-timestampAndSha7=snapshot-${TIMESTAMP}-${SHA7}" >> $GITHUB_OUTPUT
-          echo "tag-version=snapshot-v${VERSION}" >> $GITHUB_OUTPUT
+          echo "docker-image-snapshot-tag=$DOCKER_IMAGE_SNAPSHOT_TAG" >> $GITHUB_OUTPUT
 
           echo "=========================================="
           echo "📦 Build Information"
@@ -52,9 +51,7 @@ jobs:
           echo "Snapshot Tag: $SNAPSHOT_TAG"
           echo "---"
           echo "Docker Image Tags:"
-          echo "  - snapshot-latest"
-          echo "  - snapshot-${TIMESTAMP}-${SHA7}"
-          echo "  - snapshot-v${VERSION}"
+          echo "  - $DOCKER_IMAGE_SNAPSHOT_TAG"
           echo "=========================================="
 
   check-snapshot-tag:
@@ -87,6 +84,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
       - name: Push Git tag
         run: |
           git config --global user.name "github-actions[bot]"
@@ -119,9 +117,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-latest }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-timestampAndSha7 }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-version }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker-image-snapshot-tag }}
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             APP_VERSION=${{ needs.extract-build-info.outputs.version }}
@@ -229,9 +225,7 @@ jobs:
           ## 📦 Docker 镜像
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-latest }}\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-timestampAndSha7 }}\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-version }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker-image-snapshot-tag }}\`
           EOF
 
           elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then
