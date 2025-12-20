@@ -90,7 +90,7 @@ jobs:
         id: build-info
         run: |
           echo "sha7=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
-          echo "timestamp=$(date +%Y%m%d)" >> $GITHUB_OUTPUT\
+          echo "timestamp=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
 
       - name: Generate image tags
         id: image-tags
