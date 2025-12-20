@@ -1,0 +1,94 @@
+name: Auto Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    name: Auto tag from release branch
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # 获取完整历史以查找所有tag
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Application Version: $VERSION"
+
+      - name: Extract version and create tag
+        run: |
+          # 提取release分支名（例如：release-1.12 → 1.12）
+          RELEASE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION_PREFIX=$(echo "$RELEASE_BRANCH" | sed 's/release-//')
+
+          echo "=========================================="
+          echo "📦 Release Branch: $RELEASE_BRANCH"
+          echo "📌 Version Prefix: $VERSION_PREFIX"
+          echo "=========================================="
+
+          # 查找已有的该版本系列的所有tag（例如：v1.12.0, v1.12.1）
+          EXISTING_TAGS=$(git tag -l "v${VERSION_PREFIX}.*" | sort -V)
+
+          if [ -z "$EXISTING_TAGS" ]; then
+            # 第一次合并，patch为0
+            PATCH=0
+            echo "🆕 First merge from this release branch"
+          else
+            # 找出最大的patch号
+            LATEST_TAG=$(echo "$EXISTING_TAGS" | tail -n 1)
+            LATEST_PATCH=$(echo "$LATEST_TAG" | sed "s/v${VERSION_PREFIX}\.//" )
+            PATCH=$((LATEST_PATCH + 1))
+            echo "📈 Latest tag: $LATEST_TAG"
+            echo "📈 Next patch: $PATCH"
+          fi
+
+          NEW_TAG="v${VERSION_PREFIX}.${PATCH}"
+
+          echo "=========================================="
+          echo "🏷️  New Tag: $NEW_TAG"
+          echo "=========================================="
+
+          # 保存到环境变量供后续步骤使用
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+      - name: Create and push tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 在merge commit上创建tag
+          git tag "$NEW_TAG" ${{ github.event.pull_request.merge_commit_sha }}
+          git push origin "$NEW_TAG"
+
+          echo "✅ Tag $NEW_TAG created and pushed successfully"
+
+      - name: Generate summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🏷️ Auto Tag Release
+          ## 📋 基本信息
+          - **触发事件**: pull_request
+          - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          - **PR**: [#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
+          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **应用版本**: ${{ steps.version.outputs.version }}
+          ## 🏷️ 创建的标签
+          - **Tag**: [$NEW_TAG](${{ github.server_url }}/${{ github.repository }}/releases/tag/$NEW_TAG)
+          ## ⏰ 时间戳
+          - **完成时间 (UTC)**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **完成时间 (Asia/Shanghai)**: $(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+          EOF

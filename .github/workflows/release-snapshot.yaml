@@ -4,6 +4,9 @@ on:
   push:
     branches: ['release-[0-9]*']
 
+permissions:
+  contents: write
+
 env:
   DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
   DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
@@ -91,9 +94,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}"; then
+          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}" ${{ github.sha }}; then
             git push origin "${{ needs.extract-build-info.outputs.snapshot-tag }}" || {
-              echo "Failed to push tag, but continuing workflow"
+              echo "Failed to push tag"
               exit 1
             }
           else
@@ -133,8 +136,8 @@ jobs:
             NODE_ENV=production
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
-  generate-summary:
-    name: Generate summary
+  finished:
+    name: Finished
     needs:
       - extract-build-info
       - check-snapshot-tag
@@ -211,7 +214,7 @@ jobs:
 
           if [ "$PUSH_SNAPSHOT_TAG_STATUS" == "success" ]; then
             cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## 🔖 快照标签
+          ## 🏷️ 快照标签
           - [${{ needs.extract-build-info.outputs.snapshot-tag }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-build-info.outputs.snapshot-tag }})
           EOF
 
