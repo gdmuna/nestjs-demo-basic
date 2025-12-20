@@ -2,7 +2,7 @@ name: CI - Feature Branche
 
 on:
   push:
-    branches: [feature/**]
+    branches: [feat/**]
 
 jobs:
   quick-lint:
