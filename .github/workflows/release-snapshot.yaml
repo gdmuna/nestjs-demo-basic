@@ -69,6 +69,7 @@ jobs:
       - name: Check if tag exists
         id: check
         run: |
+          git fetch --tags
           if git rev-parse "${{ needs.extract-build-info.outputs.snapshot-tag }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
@@ -89,8 +90,16 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ needs.extract-build-info.outputs.snapshot-tag }}
-          git push origin ${{ needs.extract-build-info.outputs.snapshot-tag }}
+
+          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}"; then
+            git push origin "${{ needs.extract-build-info.outputs.snapshot-tag }}" || {
+              echo "Failed to push tag, but continuing workflow"
+              exit 1
+            }
+          else
+            echo "Failed to create tag"
+            exit 1
+          fi
 
   build-and-publish:
     name: Build and publish Docker image
@@ -131,7 +140,7 @@ jobs:
       - check-snapshot-tag
       - push-snapshot-tag
       - build-and-publish
-    if: "contains(github.event.head_commit.message, '[snapshot]')"
+    if: "always() && contains(github.event.head_commit.message, '[snapshot]')"
     runs-on: ubuntu-latest
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
