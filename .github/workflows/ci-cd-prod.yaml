@@ -131,10 +131,9 @@ jobs:
       - build-and-publish
     if: always()
     runs-on: ubuntu-latest
-    environment: production
     env:
-      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
-      DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
     steps:
       - name: Generate summary
         run: |
@@ -170,7 +169,7 @@ jobs:
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - **提交信息**: ${{ github.event.head_commit.message }}
+          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
           - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
