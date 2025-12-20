@@ -2,7 +2,7 @@ name: CI - Feature Branch
 
 on:
   push:
-    branches: [feat/**]
+    branches: [feature/**]
 
 jobs:
   quick-lint:
@@ -56,9 +56,6 @@ jobs:
           VERSION=$(node -e "console.log(require('./package.json').version)")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Application Version: $VERSION"
-
-      - name: Generate Prisma Client
-        run: pnpm prisma generate
 
       - name: Format & Lint code
         run: |
