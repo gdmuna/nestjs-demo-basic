@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
+    "commit": "cz",
     "prepare": "husky"
   },
   "keywords": [],
@@ -31,26 +32,30 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
-    "@prisma/adapter-pg": "^7.1.0",
-    "@prisma/client": "^7.1.0",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0",
     "dotenv": "^17.2.3",
     "pg": "^8.16.3",
-    "prisma": "^7.1.0",
+    "prisma": "^7.2.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tsc-alias": "^1.8.16"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "@eslint/js": "^9.39.2",
     "@nestjs/testing": "^11.1.9",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.0",
+    "@types/node": "^25.0.3",
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "~8.49.0",
     "@typescript-eslint/parser": "~8.49.0",
-    "eslint": "~9.39.1",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "~9.39.2",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
@@ -68,5 +73,10 @@
     "**/*.{json,md,css,scss,html,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }

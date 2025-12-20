@@ -1,13 +1,12 @@
-name: Pull Request Check - Production
+name: CI - Feature Branch
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  push:
+    branches: [feature/**]
 
 jobs:
-  lint-and-test:
-    name: Lint and test
+  quick-lint:
+    name: Quick lint
     runs-on: ubuntu-latest
 
     services:
@@ -43,8 +42,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
-          # cache: 'pnpm'
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: |
@@ -59,9 +57,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Application Version: $VERSION"
 
-      - name: Generate Prisma Client
-        run: pnpm prisma generate
-
       - name: Format & Lint code
         run: |
           echo "📝 格式化代码"
@@ -71,25 +66,13 @@ jobs:
           pnpm eslint
           echo "✓ 质量检查完成"
 
-      - name: Run tests with coverage
-        run: |
-          echo "🧪 运行测试"
-          pnpm test --ci --coverage
-          echo "✓ 测试完成"
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-
   generate-summary:
     name: Generate summary
-    needs: lint-and-test
+    needs: quick-lint
     if: always()
     runs-on: ubuntu-latest
     env:
-      PR_TITLE: ${{ github.event.pull_request.title }}
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
     steps:
       - name: Generate summary
@@ -98,10 +81,10 @@ jobs:
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
 
           # 获取 job 状态
-          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+          LINT_STATUS="${{ needs.quick-lint.result }}"
 
           # 状态图标映射
-          case "$LINT_TEST_STATUS" in
+          case "$LINT_STATUS" in
             success) LINT_ICON="✅" ;;
             failure) LINT_ICON="❌" ;;
             cancelled) LINT_ICON="🚫" ;;
@@ -111,18 +94,18 @@ jobs:
 
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🧪 PR 预检流程报告 - Production
+          # 🔬 CI 流程报告 - Feature Branch
           ## 📋 基本信息
-          - **触发事件**: pull_request
+          - **触发事件**: push
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
+          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
+          - **应用版本**: ${{ needs.quick-lint.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
-          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+          | Quick lint | $LINT_ICON $LINT_STATUS |
           ## ⏰ 时间戳
           - **完成时间 (UTC)**: $TIMESTAMP_UTC
           - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN

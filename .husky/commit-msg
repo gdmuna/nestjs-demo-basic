@@ -1,0 +1,9 @@
+#!/bin/sh
+
+GREEN="\033[32m"; YELLOW="\033[33m"; RESET="\033[0m"
+
+printf "%-12b  %b\n" "\n${GREEN}[GitHook]" "[LOG] 执行 Commit-msg hook...${RESET}"
+
+pnpm commitlint --edit $1
+
+printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] Commit-msg hook 执行完毕${RESET}"
