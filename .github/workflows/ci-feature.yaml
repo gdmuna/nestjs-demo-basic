@@ -66,8 +66,8 @@ jobs:
           pnpm eslint
           echo "✓ 质量检查完成"
 
-  generate-summary:
-    name: Generate summary
+  finished:
+    name: Finished
     needs: quick-lint
     if: always()
     runs-on: ubuntu-latest

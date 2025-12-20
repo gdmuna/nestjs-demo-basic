@@ -83,8 +83,8 @@ jobs:
           name: coverage-report
           path: coverage/
 
-  generate-summary:
-    name: Generate summary
+  finished:
+    name: Finished
     needs: lint-and-test
     if: always()
     runs-on: ubuntu-latest

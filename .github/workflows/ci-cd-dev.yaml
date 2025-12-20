@@ -122,8 +122,8 @@ jobs:
             NODE_ENV=development
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
-  generate-summary:
-    name: Generate summary
+  finished:
+    name: Finished
     needs:
       - lint-and-test
       - build-and-publish

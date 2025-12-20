@@ -133,8 +133,8 @@ jobs:
             NODE_ENV=production
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
-  generate-summary:
-    name: Generate summary
+  finished:
+    name: Finished
     needs:
       - extract-build-info
       - check-snapshot-tag
