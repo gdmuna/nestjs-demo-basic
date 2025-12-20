@@ -38,8 +38,8 @@ jobs:
           echo "📌 Version Prefix: $VERSION_PREFIX"
           echo "=========================================="
 
-          # 查找已有的该版本系列的所有tag（例如：v1.12.0, v1.12.1）
-          EXISTING_TAGS=$(git tag -l "v${VERSION_PREFIX}.*" | sort -V)
+          # 查找已有的该版本系列的所有tag（排除快照tag，只匹配 v1.12.0 格式）
+          EXISTING_TAGS=$(git tag -l "v${VERSION_PREFIX}.*" | grep -E "^v${VERSION_PREFIX}\.[0-9]+$" | sort -V)
 
           if [ -z "$EXISTING_TAGS" ]; then
             # 第一次合并，patch为0
@@ -55,21 +55,50 @@ jobs:
           fi
 
           NEW_TAG="v${VERSION_PREFIX}.${PATCH}"
+          NEW_VERSION="${VERSION_PREFIX}.${PATCH}"
 
           echo "=========================================="
           echo "🏷️  New Tag: $NEW_TAG"
+          echo "📦 New Version: $NEW_VERSION"
           echo "=========================================="
 
           # 保存到环境变量供后续步骤使用
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Update package.json version
+        run: |
+          # 更新package.json中的version字段
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "📝 Updated package.json version to $NEW_VERSION"
+
+      - name: Commit and push version update
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add package.json
+          # 检查是否有变更
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to package.json, skipping commit"
+          else
+            git commit -m "chore(release): bump version to $NEW_VERSION [skip ci]"
+            git push origin main
+            echo "✅ Version update committed and pushed to main"
+          fi
 
       - name: Create and push tag
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 在merge commit上创建tag
-          git tag "$NEW_TAG" ${{ github.event.pull_request.merge_commit_sha }}
+          # 在最新的commit上创建tag（包含version更新）
+          git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
 
           echo "✅ Tag $NEW_TAG created and pushed successfully"
