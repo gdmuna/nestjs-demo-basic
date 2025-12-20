@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
+    "commit": "cz",
     "prepare": "husky"
   },
   "keywords": [],
@@ -74,5 +75,10 @@
     "**/*.{json,md,css,scss,html,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }
