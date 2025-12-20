@@ -91,9 +91,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}"; then
+          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}" ${{ github.sha }}; then
             git push origin "${{ needs.extract-build-info.outputs.snapshot-tag }}" || {
-              echo "Failed to push tag, but continuing workflow"
+              echo "Failed to push tag"
               exit 1
             }
           else
@@ -211,7 +211,7 @@ jobs:
 
           if [ "$PUSH_SNAPSHOT_TAG_STATUS" == "success" ]; then
             cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## 🔖 快照标签
+          ## 🏷️ 快照标签
           - [${{ needs.extract-build-info.outputs.snapshot-tag }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-build-info.outputs.snapshot-tag }})
           EOF
 
