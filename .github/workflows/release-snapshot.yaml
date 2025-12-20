@@ -1,0 +1,234 @@
+name: Generate Release Snapshot
+
+on:
+  push:
+    branches: ['release-[0-9]*']
+
+env:
+  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
+  DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
+  DB_URL: ${{ secrets.PROD_DB_URL }}
+  BACKEND_CONTAINER_PORT: ${{ vars.PROD_BACKEND_CONTAINER_PORT || 3001 }}
+  BACKEND_HOST_PORT: ${{ vars.PROD_BACKEND_HOST_PORT || 3001 }}
+
+jobs:
+  extract-build-info:
+    name: Extract build info
+    if: "contains(github.event.head_commit.message, '[snapshot]')"
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build-info.outputs.version }}
+      snapshot-tag: ${{ steps.build-info.outputs.snapshot-tag }}
+      tag-latest: ${{ steps.build-info.outputs.tag-latest }}
+      tag-timestampAndSha7: ${{ steps.build-info.outputs.tag-timestampAndSha7 }}
+      tag-version: ${{ steps.build-info.outputs.tag-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Extract build info
+        id: build-info
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          SHA7=${GITHUB_SHA:0:7}
+          TIMESTAMP=$(date +%Y%m%d)
+          SNAPSHOT_TAG="v${VERSION}-snapshot-${TIMESTAMP}-${SHA7}"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha7=$SHA7" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "snapshot-tag=$SNAPSHOT_TAG" >> $GITHUB_OUTPUT
+          echo "tag-latest=snapshot-latest" >> $GITHUB_OUTPUT
+          echo "tag-timestampAndSha7=snapshot-${TIMESTAMP}-${SHA7}" >> $GITHUB_OUTPUT
+          echo "tag-version=snapshot-v${VERSION}" >> $GITHUB_OUTPUT
+
+          echo "=========================================="
+          echo "📦 Build Information"
+          echo "=========================================="
+          echo "Application Version: $VERSION"
+          echo "Git Commit SHA (short): $SHA7"
+          echo "Build Timestamp: $TIMESTAMP"
+          echo "Snapshot Tag: $SNAPSHOT_TAG"
+          echo "---"
+          echo "Docker Image Tags:"
+          echo "  - snapshot-latest"
+          echo "  - snapshot-${TIMESTAMP}-${SHA7}"
+          echo "  - snapshot-v${VERSION}"
+          echo "=========================================="
+
+  push-snapshot-tag:
+    name: Push snapshot tag
+    needs: extract-build-info
+    if: "contains(github.event.head_commit.message, '[snapshot]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Push Git tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPSHOT_TAG: ${{ needs.extract-build-info.outputs.snapshot-tag }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag $SNAPSHOT_TAG
+          git push origin $SNAPSHOT_TAG
+
+  build-and-publish:
+    name: Build and publish Docker image
+    needs: extract-build-info
+    if: "contains(github.event.head_commit.message, '[snapshot]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-latest }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-timestampAndSha7 }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-version }}
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            APP_VERSION=${{ needs.extract-build-info.outputs.version }}
+            NODE_ENV=production
+            PORT=${{ env.BACKEND_CONTAINER_PORT }}
+
+  generate-summary:
+    name: Generate summary
+    needs:
+      - extract-build-info
+      - push-snapshot-tag
+      - build-and-publish
+    if: "contains(github.event.head_commit.message, '[snapshot]')"
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+    steps:
+      - name: Generate summary
+        run: |
+          TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+
+          # 获取 job 状态
+          EXTRACT_BUILD_INFO_STATUS="${{ needs.extract-build-info.result }}"
+          PUSH_SNAPSHOT_TAG_STATUS="${{ needs.push-snapshot-tag.result }}"
+          BUILD_PUBLISH_STATUS="${{ needs.build-and-publish.result }}"
+
+          # 状态图标映射
+          case "$EXTRACT_BUILD_INFO_STATUS" in
+            success) EXTRACT_ICON="✅" ;;
+            failure) EXTRACT_ICON="❌" ;;
+            cancelled) EXTRACT_ICON="🚫" ;;
+            skipped) EXTRACT_ICON="⏭️" ;;
+            *) EXTRACT_ICON="❓" ;;
+          esac
+
+          case "$PUSH_SNAPSHOT_TAG_STATUS" in
+            success) PUSH_ICON="✅" ;;
+            failure) PUSH_ICON="❌" ;;
+            cancelled) PUSH_ICON="🚫" ;;
+            skipped) PUSH_ICON="⏭️" ;;
+            *) PUSH_ICON="❓" ;;
+          esac
+
+          case "$BUILD_PUBLISH_STATUS" in
+            success) BUILD_ICON="✅" ;;
+            failure) BUILD_ICON="❌" ;;
+            cancelled) BUILD_ICON="🚫" ;;
+            skipped) BUILD_ICON="⏭️" ;;
+            *) BUILD_ICON="❓" ;;
+          esac
+
+          # 生成统一的 summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🔬 Release Snapshot 流程报告
+          ## 📋 基本信息
+          - **触发事件**: push
+          - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
+          - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
+          - **应用版本**: ${{ needs.extract-build-info.outputs.version }}
+          ## 📝 执行状态
+          | Job | 状态 |
+          |-----|------|
+          | Extract build info | $EXTRACT_ICON $EXTRACT_BUILD_INFO_STATUS |
+          | Push snapshot tag | $PUSH_ICON $PUSH_SNAPSHOT_TAG_STATUS |
+          | Build and publish Docker image | $BUILD_ICON $BUILD_PUBLISH_STATUS |
+          EOF
+
+          if [ "$PUSH_SNAPSHOT_TAG_STATUS" == "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🔖 快照标签
+          - [${{ needs.extract-build-info.outputs.snapshot-tag }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-build-info.outputs.snapshot-tag }})
+          EOF
+
+          elif [ "$PUSH_SNAPSHOT_TAG_STATUS" == "skipped" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ℹ️ 快照标签
+          - 快照标签推送已跳过
+          EOF
+
+          elif [ "$PUSH_SNAPSHOT_TAG_STATUS" == "failure" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❗ 快照标签
+          - 快照标签推送失败，请检查日志以获取详细信息
+          EOF
+          fi
+
+          # 如果构建成功，显示镜像信息
+          if [ "$BUILD_PUBLISH_STATUS" == "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 📦 Docker 镜像
+          - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
+          - **镜像标签**:
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-latest }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-timestampAndSha7 }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.tag-version }}\`
+          EOF
+
+          elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ℹ️ Docker 镜像
+          - 镜像构建已跳过
+          EOF
+
+          elif [ "$BUILD_PUBLISH_STATUS" == "failure" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❗ Docker 镜像
+          - 镜像构建失败，请检查日志以获取详细信息
+          EOF
+
+          elif [ "$BUILD_PUBLISH_STATUS" == "cancelled" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❗ Docker 镜像
+          - 镜像构建被取消
+          EOF
+          fi
+
+          # 时间戳
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ⏰ 时间戳
+          - **完成时间 (UTC)**: $TIMESTAMP_UTC
+          - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
+          EOF
