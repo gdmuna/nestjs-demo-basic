@@ -57,26 +57,42 @@ jobs:
           echo "  - snapshot-v${VERSION}"
           echo "=========================================="
 
-  push-snapshot-tag:
-    name: Push snapshot tag
+  check-snapshot-tag:
+    name: Check snapshot tag
     needs: extract-build-info
     if: "contains(github.event.head_commit.message, '[snapshot]')"
     runs-on: ubuntu-latest
+    outputs:
+      tag_exists: ${{ steps.check.outputs.exists }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Check if tag exists
+        id: check
+        run: |
+          if git rev-parse "${{ needs.extract-build-info.outputs.snapshot-tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  push-snapshot-tag:
+    name: Push snapshot tag
+    needs: [extract-build-info, check-snapshot-tag]
+    if: "contains(github.event.head_commit.message, '[snapshot]') && needs.check-snapshot-tag.outputs.tag_exists == 'false'"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
       - name: Push Git tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SNAPSHOT_TAG: ${{ needs.extract-build-info.outputs.snapshot-tag }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git tag $SNAPSHOT_TAG
-          git push origin $SNAPSHOT_TAG
+          git tag ${{ needs.extract-build-info.outputs.snapshot-tag }}
+          git push origin ${{ needs.extract-build-info.outputs.snapshot-tag }}
 
   build-and-publish:
     name: Build and publish Docker image
@@ -98,7 +114,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -116,6 +132,7 @@ jobs:
     name: Generate summary
     needs:
       - extract-build-info
+      - check-snapshot-tag
       - push-snapshot-tag
       - build-and-publish
     if: "contains(github.event.head_commit.message, '[snapshot]')"
@@ -131,6 +148,7 @@ jobs:
 
           # 获取 job 状态
           EXTRACT_BUILD_INFO_STATUS="${{ needs.extract-build-info.result }}"
+          CHECK_SNAPSHOT_TAG_STATUS="${{ needs.check-snapshot-tag.result }}"
           PUSH_SNAPSHOT_TAG_STATUS="${{ needs.push-snapshot-tag.result }}"
           BUILD_PUBLISH_STATUS="${{ needs.build-and-publish.result }}"
 
@@ -141,6 +159,14 @@ jobs:
             cancelled) EXTRACT_ICON="🚫" ;;
             skipped) EXTRACT_ICON="⏭️" ;;
             *) EXTRACT_ICON="❓" ;;
+          esac
+
+          case "$CHECK_SNAPSHOT_TAG_STATUS" in
+            success) CHECK_ICON="✅" ;;
+            failure) CHECK_ICON="❌" ;;
+            cancelled) CHECK_ICON="🚫" ;;
+            skipped) CHECK_ICON="⏭️" ;;
+            *) CHECK_ICON="❓" ;;
           esac
 
           case "$PUSH_SNAPSHOT_TAG_STATUS" in
@@ -173,6 +199,7 @@ jobs:
           | Job | 状态 |
           |-----|------|
           | Extract build info | $EXTRACT_ICON $EXTRACT_BUILD_INFO_STATUS |
+          | Check snapshot tag | $CHECK_ICON $CHECK_SNAPSHOT_TAG_STATUS |
           | Push snapshot tag | $PUSH_ICON $PUSH_SNAPSHOT_TAG_STATUS |
           | Build and publish Docker image | $BUILD_ICON $BUILD_PUBLISH_STATUS |
           EOF
