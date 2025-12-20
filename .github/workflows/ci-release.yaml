@@ -42,7 +42,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'pnpm'
+          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
+          # cache: 'pnpm'
 
       - name: Install dependencies
         run: |
