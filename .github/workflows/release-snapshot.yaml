@@ -4,6 +4,9 @@ on:
   push:
     branches: ['release-[0-9]*']
 
+permissions:
+  contents: write
+
 env:
   DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
   DOCKER_REPO_NAME: ${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
