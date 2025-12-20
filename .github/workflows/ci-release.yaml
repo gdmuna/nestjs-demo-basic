@@ -1,4 +1,4 @@
-name: CI - Release Branche
+name: CI - Release Branch
 
 on:
   push:
@@ -107,7 +107,7 @@ jobs:
 
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🔬 CI 流程报告 - Release Branche
+          # 🔬 CI 流程报告 - Release Branch
           ## 📋 基本信息
           - **触发事件**: push
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
