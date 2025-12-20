@@ -17,8 +17,6 @@ export default {
                 'ci',
                 'build',
                 'release',
-                '[deploy]',
-                '[snapshot]',
             ],
         ],
     },
