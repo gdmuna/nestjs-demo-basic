@@ -7,7 +7,7 @@ import { PrismaClient } from '@root/prisma/generated/client.js';
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
     constructor() {
         const adapter = new PrismaPg({
-            connectionString: process.env.DATABASE_URL,
+            connectionString: process.env.DB_URL,
         });
         super({ adapter });
     }

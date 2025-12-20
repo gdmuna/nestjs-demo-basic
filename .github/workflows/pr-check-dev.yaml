@@ -26,7 +26,7 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
+      DB_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -114,11 +114,11 @@ jobs:
           # 🧪 PR 预检流程报告 - Development
           ## 📋 基本信息
           - **触发事件**: pull_request
-          - **环境**: development
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
           - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
