@@ -1,6 +1,6 @@
-# NestJS Demo Basic
-
 <div align="center">
+
+# NestJS Demo Basic
 
 ![NestJS](https://img.shields.io/badge/NestJS-11.x-E0234E?logo=nestjs) ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript) ![Prisma](https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma) ![pnpm](https://img.shields.io/badge/pnpm-8.x-F69220?logo=pnpm) ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -46,7 +46,7 @@
 - **PostgreSQL** >= 15.0（可选，用于数据库功能）
 - **Docker**（可选，用于容器化部署）
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 从模板创建项目
 
@@ -97,7 +97,7 @@ pnpm start:dev
 
 访问 [http://localhost:3000](http://localhost:3000)
 
-## 📚 详细文档
+## 详细文档
 
 ### 目录结构
 
@@ -190,42 +190,42 @@ pnpm prisma studio        # 数据库可视化界面
 
 \*仅在使用数据库功能时必需
 
-## 🔄 CI/CD 工作流
+## CI/CD 工作流
 
 ### 工作流架构
 
 ```mermaid
 graph TB
-    subgraph "Feature Development"
-        A[Feature Branch] -->|Push| B[ci-feature.yaml]
-        B -->|Lint + Build| C{Pass?}
-        C -->|Yes| D[Ready for PR]
-        C -->|No| E[Fix Issues]
+    subgraph 特性开发
+        A[特性分支] -->|推送| B[ci-feature.yaml]
+        B -->|代码检查和构建| C{通过?}
+        C -->|是| D[准备提交 PR]
+        C -->|否| E[修复问题]
         E --> A
     end
 
-    subgraph "Release Process"
-        F[Release Branch] -->|Push| G[ci-release.yaml]
-        G -->|Full CI + Tests| H{Pass?}
-        H -->|Yes| I[Merge to Main]
-        H -->|No| J[Fix Issues]
+    subgraph 发布流程
+        F[发布分支] -->|推送| G[ci-release.yaml]
+        G -->|完整 CI 和测试| H{通过?}
+        H -->|是| I[合并到 Main]
+        H -->|否| J[修复问题]
         J --> F
 
-        F -->|Commit with [snapshot]| K[release-snapshot.yaml]
-        K -->|Create Snapshot Tag| L[v0.3.0-snapshot-...]
+        F -->|提交包含 snapshot| K[release-snapshot.yaml]
+        K -->|创建快照标签| L[v0.3.0-snapshot-...]
     end
 
-    subgraph "Deployment"
-        I -->|Auto Trigger| M[auto-tag-release.yaml]
-        M -->|Calculate Next Version| N[Update package.json]
-        N -->|Create Tag| O[v0.3.2]
-        O -->|Trigger| P[ci-cd-prod.yaml]
-        P -->|Deploy| Q[Production]
+    subgraph 生产部署
+        I -->|自动触发| M[auto-tag-release.yaml]
+        M -->|计算下一个版本| N[更新 package.json]
+        N -->|创建标签| O[v0.3.2]
+        O -->|触发| P[ci-cd-prod.yaml]
+        P -->|部署| Q[生产环境]
     end
 
-    subgraph "Development Deploy"
-        D -->|Merge to Dev| R[ci-cd-dev.yaml]
-        R -->|Deploy| S[Dev Environment]
+    subgraph 开发部署
+        D -->|合并到 Dev| R[ci-cd-dev.yaml]
+        R -->|部署| S[开发环境]
     end
 ```
 
@@ -271,27 +271,27 @@ git commit -m "docs(readme): update installation guide"
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer
-    participant RB as Release Branch
-    participant Main as Main Branch
+    participant Dev as 开发者
+    participant RB as 发布分支
+    participant Main as 主分支
     participant GH as GitHub Actions
-    participant Tag as Git Tag
+    participant Tag as Git 标签
 
-    Dev->>RB: Create release-0.3
-    Dev->>RB: Commit changes
-    Dev->>RB: Push with [snapshot]
-    RB->>GH: Trigger release-snapshot
-    GH->>Tag: Create v0.3.0-snapshot-20251221-abc1234
+    Dev->>RB: 创建 release-0.3
+    Dev->>RB: 提交变更
+    Dev->>RB: 推送带 [snapshot] 标记
+    RB->>GH: 触发 release-snapshot
+    GH->>Tag: 创建 v0.3.0-snapshot-20251221-abc1234
 
-    Dev->>Main: Create PR (release-0.3 → main)
-    Dev->>Main: Merge PR
-    Main->>GH: Trigger auto-tag-release
-    GH->>GH: Find latest v0.3.x tag
-    GH->>GH: Calculate next patch (v0.3.1 → v0.3.2)
-    GH->>Main: Update package.json
-    GH->>Tag: Create v0.3.2
-    Tag->>GH: Trigger ci-cd-prod
-    GH->>GH: Deploy to Production
+    Dev->>Main: 创建 PR (release-0.3 → main)
+    Dev->>Main: 合并 PR
+    Main->>GH: 触发 auto-tag-release
+    GH->>GH: 查找最新 v0.3.x 标签
+    GH->>GH: 计算下一个补丁版本 (v0.3.1 → v0.3.2)
+    GH->>Main: 更新 package.json
+    GH->>Tag: 创建 v0.3.2
+    Tag->>GH: 触发 ci-cd-prod
+    GH->>GH: 部署到生产环境
 ```
 
 ## 🐳 Docker 部署
@@ -348,24 +348,24 @@ volumes:
 docker-compose up -d
 ```
 
-## 🤝 贡献指南
+## 贡献指南
 
 ### 开发流程
 
 ```mermaid
 flowchart LR
-    A[Fork Repository] --> B[Create Feature Branch]
-    B --> C[Make Changes]
-    C --> D[Run Tests]
-    D --> E{Tests Pass?}
-    E -->|No| C
-    E -->|Yes| F[Commit Changes]
-    F --> G[Push to Fork]
-    G --> H[Create Pull Request]
-    H --> I[Code Review]
-    I --> J{Approved?}
-    J -->|No| C
-    J -->|Yes| K[Merge to Main]
+    A[Fork 仓库] --> B[创建特性分支]
+    B --> C[修改代码]
+    C --> D[运行测试]
+    D --> E{测试通过?}
+    E -->|否| C
+    E -->|是| F[提交变更]
+    F --> G[推送到 Fork]
+    G --> H[创建 Pull Request]
+    H --> I[代码审查]
+    I --> J{审批通过?}
+    J -->|否| C
+    J -->|是| K[合并到主分支]
 ```
 
 ### 分支策略
