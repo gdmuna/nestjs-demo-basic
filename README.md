@@ -1,20 +1,85 @@
+> [!Warning]
+> 该模板仓库文档尚不完善，部分内容存在缺失，敬请期待后续更新。
+
 <div align="center">
 
-# NestJS Demo Basic
+<h1>🚀 NestJS Enterprise Starter</h1>
 
-![NestJS](https://img.shields.io/badge/NestJS-11.x-E0234E?logo=nestjs) ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript) ![Prisma](https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma) ![pnpm](https://img.shields.io/badge/pnpm-8.x-F69220?logo=pnpm) ![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+  <strong>5 分钟启动生产级 NestJS 后端</strong><br/>
+  开箱即用的企业级开发模板，从代码到部署的完整工程化解决方案
+</p>
 
-**一个生产就绪的 NestJS 后端开发模板**
+<p align="center">
+  <img src="https://img.shields.io/badge/NestJS-11.x-E0234E?logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
+  <img src="https://img.shields.io/badge/pnpm-8.x-F69220?logo=pnpm&logoColor=white" alt="pnpm" />
+  <img src="https://img.shields.io/badge/License-MIT-success?logo=opensourceinitiative&logoColor=white" alt="License" />
+  <img src="https://img.shields.io/github/stars/FOV-RGT/nestjs-demo-basic?style=social" alt="GitHub stars" />
+</p>
 
-提供完整的 CI/CD 工作流、代码质量工具链、版本管理和数据库集成
+<p align="center">
+  <a href="#-为什么选择这个模板"><strong>为什么选择</strong></a> •
+  <a href="#-快速开始"><strong>快速开始</strong></a> •
+  <a href="#-核心特性"><strong>核心特性</strong></a> •
+  <a href="#-在线演示"><strong>在线演示</strong></a> •
+  <a href="#-贡献指南"><strong>参与贡献</strong></a>
+</p>
 
-[快速开始](#快速开始) • [文档](#详细文档) • [CI/CD](#cicd-工作流) • [贡献指南](#贡献指南)
+<br/>
+
+<p align="center">
+  <img src="https://via.placeholder.com/800x400/1a1a1a/00d8ff?text=Demo+Screenshot" alt="项目截图" />
+  <br/>
+  <em>💡 提示：录制一个 5-10 秒的 GIF 展示从克隆到启动的完整流程</em>
+</p>
 
 </div>
 
+<br/>
+
+## 🎯 为什么选择这个模板？
+
+> 大多数 NestJS 模板只给你一个空壳，而这个项目提供了从开发到部署的**完整工程化解决方案**
+
+### 🤔 你是否遇到过这些问题？
+
+- ❌ 每次新项目都要从头配置 ESLint、Prettier、Husky...
+- ❌ 不知道如何搭建规范的 CI/CD 流程
+- ❌ 手动管理版本号，经常忘记打 tag
+- ❌ 团队成员提交信息格式不统一，难以追踪变更
+- ❌ Docker 配置复杂，部署流程不清晰
+
+### ✅ 这个模板帮你解决
+
+| 痛点               | 解决方案                              |
+| ------------------ | ------------------------------------- |
+| **环境配置繁琐**   | 一键初始化，5 分钟启动完整开发环境    |
+| **代码质量难保证** | ESLint + Prettier + Commitlint 全家桶 |
+| **版本管理混乱**   | 自动化语义化版本控制，PR 合并即打 tag |
+| **CI/CD 缺失**     | 6 个开箱即用的 GitHub Actions 工作流  |
+| **团队协作困难**   | 统一的代码规范 + 提交规范 + Git 钩子  |
+| **生产部署复杂**   | Docker 多阶段构建 + 环境变量管理      |
+
+### 🏆 与其他模板对比
+
+```diff
++ ✅ 完整的 CI/CD 工作流（自动测试、自动部署、自动发布）
++ ✅ 自动化版本管理（Semantic Versioning + Changelog 生成）
++ ✅ 生产级数据库集成（Prisma + 迁移管理 + 类型安全）
++ ✅ 企业级代码规范（Commitlint + Husky + Lint-staged）
++ ✅ 双语文档支持（中英文 README 和 CHANGELOG）
+- ⚠️  其他模板：基础配置，需要自行完善
+- ⚠️  其他模板：缺少 CI/CD，手动部署
+- ⚠️  其他模板：没有版本管理策略
+```
+
+<br/>
+
 ---
 
-## ✨ 特性
+## 🚀 核心特性
 
 ### 核心功能
 
@@ -474,6 +539,6 @@ pnpm commit
 
 **如果这个项目对你有帮助，请给个 ⭐️**
 
-Made with ❤️ by [Your Name]
+Made with ❤️ by FOV-RGT
 
 </div>
