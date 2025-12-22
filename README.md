@@ -356,6 +356,39 @@ sequenceDiagram
     GH->>GH: 部署到生产环境
 ```
 
+### ⚠️ 重要：配置 Personal Access Token
+
+**为什么需要 PAT？**
+
+GitHub Actions 的安全限制：使用默认 `GITHUB_TOKEN` 推送的标签、代码或创建的 PR **不会触发**其他工作流。这是为了防止无限递归执行。
+
+本项目的 `auto-tag-release.yaml` 需要推送标签来触发 `cd-prod.yaml` 进行生产部署，因此需要配置 Personal Access Token。
+
+**快速配置（3 分钟）：**
+
+1. **创建 Fine-grained Personal Access Token**
+    - 访问：[GitHub Settings → Tokens](https://github.com/settings/tokens?type=beta)
+    - 点击 "Generate new token"
+    - Repository access: 选择你的项目仓库
+    - Permissions: `Contents` = `Read and write`
+
+2. **添加到仓库 Secrets**
+    - 访问：仓库 → Settings → Secrets and variables → Actions
+    - 点击 "New repository secret"
+    - Name: `PAT_TOKEN`
+    - Secret: 粘贴你的 token
+
+3. **验证配置**
+    - 合并 release 分支到 main
+    - 检查 Actions 页面：应该看到 `auto-tag-release` 和 `cd-prod` 依次执行
+
+**详细配置指南**: 查看 [`docs/github-pat-setup.md`](docs/github-pat-setup.md)
+
+**未配置 PAT 的影响**:
+
+- ✅ 标签仍会被创建和推送
+- ❌ 生产部署工作流不会自动触发（需要手动运行）
+
 ## 🐳 Docker 部署
 
 ### 构建镜像
