@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g., v0.4.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,11 +36,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
 
       - name: Extract tag name
         id: tag
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG_NAME="${{ github.event.inputs.tag }}"
+          else
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+          fi
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "📌 Tag: $TAG_NAME"
 

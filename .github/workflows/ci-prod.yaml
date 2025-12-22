@@ -45,6 +45,24 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18.1-alpine
+        env:
+          POSTGRES_USER: ci_test
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: nestjs_demo_basic_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DB_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
     outputs:
       version: ${{ steps.version.outputs.version }}
 
