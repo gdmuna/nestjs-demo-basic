@@ -203,7 +203,7 @@ jobs:
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
+          - **提交信息**: ${COMMIT_MESSAGE}
           - **应用版本**: ${{ needs.test.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |

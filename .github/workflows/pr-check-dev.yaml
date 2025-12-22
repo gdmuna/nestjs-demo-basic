@@ -112,12 +112,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
 
     steps:
       - name: Generate summary
         run: |
           TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
+
+          # 转义特殊字符，防止破坏 Markdown
+          PR_TITLE_ESCAPED="${PR_TITLE//$'\n'/ }"
+          PR_TITLE_ESCAPED="${PR_TITLE_ESCAPED//\`/\\\`}"
+          PR_HEAD_REPO_ESCAPED="${PR_HEAD_REPO//\`/\\\`}"
 
           # 获取 job 状态
           LINT_FORMAT_STATUS="${{ needs.lint-and-format.result }}"
@@ -146,8 +152,8 @@ jobs:
           ## 📋 基本信息
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **PR**: [#${{ github.event.pull_request.number }} - ${PR_TITLE_ESCAPED}](${{ github.event.pull_request.html_url }})
+          - **源分支 → 目标分支**: [${PR_HEAD_REPO_ESCAPED}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           - **应用版本**: ${{ needs.test.outputs.version }}
           ## 📝 执行状态
