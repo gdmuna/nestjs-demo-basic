@@ -1,8 +1,12 @@
-name: CI/CD - Production
+name: CD - Production
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
 
 env:
   DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
@@ -11,35 +15,28 @@ env:
   BACKEND_CONTAINER_PORT: ${{ vars.PROD_BACKEND_CONTAINER_PORT || 3001 }}
   BACKEND_HOST_PORT: ${{ vars.PROD_BACKEND_HOST_PORT || 3001 }}
 
-jobs:
-  lint-and-test:
-    name: Lint and test
-    runs-on: ubuntu-latest
+concurrency:
+  group: CD - Production - ${{ github.ref }}
+  cancel-in-progress: false
 
+jobs:
+  extract-version:
+    name: Extract version
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
-          # cache: 'pnpm'
-
-      - name: Install dependencies
+      - name: Extract tag name
+        id: tag
         run: |
-          echo "📥 安装项目依赖"
-          pnpm install
-          echo "✓ 依赖安装完成"
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "📌 Tag: $TAG_NAME"
 
       - name: Extract version from package.json
         id: version
@@ -48,39 +45,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Application Version: $VERSION"
 
-      - name: Generate Prisma Client
-        run: pnpm prisma generate
-
-      - name: Format & Lint code
-        run: |
-          echo "📝 格式化代码"
-          pnpm prettier --check .
-          echo "✓ 格式化完成"
-          echo "✅ 质量检查"
-          pnpm eslint
-          echo "✓ 质量检查完成"
-
-      - name: Run tests with coverage
-        run: |
-          echo "🧪 运行测试"
-          pnpm test --ci --coverage
-          echo "✓ 测试完成"
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-
   build-and-publish:
     name: Build and publish Docker image
-    needs: lint-and-test
-    if: "!contains(github.event.head_commit.message, '[skip deploy]')"
+    needs: extract-version
     runs-on: ubuntu-latest
     outputs:
       image-tag-latest: ${{ steps.image-tags.outputs.tag-latest }}
       image-tag-timestampAndSha7: ${{ steps.image-tags.outputs.tag-timestampAndSha7 }}
-      image-tag-version: ${{ steps.image-tags.outputs.tag-version }}
 
     steps:
       - name: Checkout
@@ -97,7 +68,6 @@ jobs:
         run: |
           echo "tag-latest=prod-latest" >> $GITHUB_OUTPUT
           echo "tag-timestampAndSha7=prod-${{ steps.build-info.outputs.timestamp }}-${{ steps.build-info.outputs.sha7 }}" >> $GITHUB_OUTPUT
-          echo "tag-version=prod-${{ needs.lint-and-test.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v3
@@ -114,25 +84,22 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.image-tags.outputs.tag-latest }}
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.image-tags.outputs.tag-timestampAndSha7 }}
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.image-tags.outputs.tag-version }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-version.outputs.version }}
           build-args: |
             GIT_COMMIT=${{ github.sha }}
-            APP_VERSION=${{ needs.lint-and-test.outputs.version }}
+            APP_VERSION=${{ needs.extract-version.outputs.version }}
             NODE_ENV=production
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
   finished:
     name: Finished
     needs:
-      - lint-and-test
+      - extract-version
       - build-and-publish
     if: always()
     runs-on: ubuntu-latest
-    env:
-      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
     steps:
       - name: Generate summary
@@ -141,16 +108,16 @@ jobs:
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
 
           # 获取 job 状态
-          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+          EXTRACT_VERSION_STATUS="${{ needs.extract-version.result }}"
           BUILD_PUBLISH_STATUS="${{ needs.build-and-publish.result }}"
 
           # 状态图标映射
-          case "$LINT_TEST_STATUS" in
-            success) LINT_ICON="✅" ;;
-            failure) LINT_ICON="❌" ;;
-            cancelled) LINT_ICON="🚫" ;;
-            skipped) LINT_ICON="⏭️" ;;
-            *) LINT_ICON="❓" ;;
+          case "$EXTRACT_VERSION_STATUS" in
+            success) EXTRACT_ICON="✅" ;;
+            failure) EXTRACT_ICON="❌" ;;
+            cancelled) EXTRACT_ICON="🚫" ;;
+            skipped) EXTRACT_ICON="⏭️" ;;
+            *) EXTRACT_ICON="❓" ;;
           esac
 
           case "$BUILD_PUBLISH_STATUS" in
@@ -163,18 +130,17 @@ jobs:
 
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🚀 CI/CD 流程报告 - Production
+          # 🚀 CD 流程报告 - Production
           ## 📋 基本信息
-          - **触发事件**: push
+          - **触发事件**: push tag
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
+          - **Git 标签**: [${{ needs.extract-version.outputs.tag_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.tag_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
-          - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
+          - **应用版本**: ${{ needs.extract-version.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
-          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+          | Extract version | $EXTRACT_ICON $EXTRACT_VERSION_STATUS |
           | Build and publish Docker image | $BUILD_ICON $BUILD_PUBLISH_STATUS |
           EOF
 
@@ -184,10 +150,9 @@ jobs:
           ## 📦 Docker 镜像
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:latest\`
             - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-latest }}\`
             - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-timestampAndSha7 }}\`
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-version }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-version.outputs.version }}\`
           EOF
 
           elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then

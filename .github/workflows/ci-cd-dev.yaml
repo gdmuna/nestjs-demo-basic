@@ -11,9 +11,46 @@ env:
   BACKEND_CONTAINER_PORT: ${{ vars.DEV_BACKEND_CONTAINER_PORT || 3000 }}
   BACKEND_HOST_PORT: ${{ vars.DEV_BACKEND_HOST_PORT || 3000 }}
 
+concurrency:
+  group: CI/CD - Development
+  cancel-in-progress: true
+
 jobs:
-  lint-and-test:
-    name: Lint and test
+  lint-and-format:
+    name: Lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          echo "📥 安装项目依赖"
+          pnpm install
+          echo "✓ 依赖安装完成"
+
+      - name: Format & Lint code
+        run: |
+          echo "📝 格式化代码"
+          pnpm prettier --check .
+          echo "✓ 格式化完成"
+          echo "✅ 质量检查"
+          pnpm eslint
+          echo "✓ 质量检查完成"
+
+  test:
+    name: Test
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -31,8 +68,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
-          # cache: 'pnpm'
 
       - name: Install dependencies
         run: |
@@ -50,15 +85,6 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma generate
 
-      - name: Format & Lint code
-        run: |
-          echo "📝 格式化代码"
-          pnpm prettier --check .
-          echo "✓ 格式化完成"
-          echo "✅ 质量检查"
-          pnpm eslint
-          echo "✓ 质量检查完成"
-
       - name: Run tests with coverage
         run: |
           echo "🧪 运行测试"
@@ -73,7 +99,7 @@ jobs:
 
   build-and-publish:
     name: Build and publish Docker image
-    needs: lint-and-test
+    needs: [lint-and-format, test]
     if: "contains(github.event.head_commit.message, '[deploy]')"
     runs-on: ubuntu-latest
     outputs:
@@ -96,7 +122,7 @@ jobs:
         run: |
           echo "tag-latest=dev-latest" >> $GITHUB_OUTPUT
           echo "tag-timestampAndSha7=dev-${{ steps.build-info.outputs.timestamp }}-${{ steps.build-info.outputs.sha7 }}" >> $GITHUB_OUTPUT
-          echo "tag-version=dev-${{ needs.lint-and-test.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "tag-version=dev-${{ needs.test.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v3
@@ -118,14 +144,15 @@ jobs:
             ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ steps.image-tags.outputs.tag-version }}
           build-args: |
             GIT_COMMIT=${{ github.sha }}
-            APP_VERSION=${{ needs.lint-and-test.outputs.version }}
+            APP_VERSION=${{ needs.test.outputs.version }}
             NODE_ENV=development
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
   finished:
     name: Finished
     needs:
-      - lint-and-test
+      - lint-and-format
+      - test
       - build-and-publish
     if: always()
     runs-on: ubuntu-latest
@@ -139,16 +166,25 @@ jobs:
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
 
           # 获取 job 状态
-          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+          LINT_FORMAT_STATUS="${{ needs.lint-and-format.result }}"
+          TEST_STATUS="${{ needs.test.result }}"
           BUILD_PUBLISH_STATUS="${{ needs.build-and-publish.result }}"
 
           # 状态图标映射
-          case "$LINT_TEST_STATUS" in
-            success) LINT_ICON="✅" ;;
-            failure) LINT_ICON="❌" ;;
-            cancelled) LINT_ICON="🚫" ;;
-            skipped) LINT_ICON="⏭️" ;;
-            *) LINT_ICON="❓" ;;
+          case "$LINT_FORMAT_STATUS" in
+            success) LINT_FORMAT_ICON="✅" ;;
+            failure) LINT_FORMAT_ICON="❌" ;;
+            cancelled) LINT_FORMAT_ICON="🚫" ;;
+            skipped) LINT_FORMAT_ICON="⏭️" ;;
+            *) LINT_FORMAT_ICON="❓" ;;
+          esac
+
+          case "$TEST_STATUS" in
+            success) TEST_ICON="✅" ;;
+            failure) TEST_ICON="❌" ;;
+            cancelled) TEST_ICON="🚫" ;;
+            skipped) TEST_ICON="⏭️" ;;
+            *) TEST_ICON="❓" ;;
           esac
 
           case "$BUILD_PUBLISH_STATUS" in
@@ -168,11 +204,12 @@ jobs:
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           - **提交信息**: ${{ env.COMMIT_MESSAGE }}
-          - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
+          - **应用版本**: ${{ needs.test.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
-          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+          | Lint and format | $LINT_FORMAT_ICON $LINT_FORMAT_STATUS |
+          | Test | $TEST_ICON $TEST_STATUS |
           | Build and publish Docker image | $BUILD_ICON $BUILD_PUBLISH_STATUS |
           EOF
 

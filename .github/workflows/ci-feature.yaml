@@ -5,8 +5,41 @@ on:
     branches: [feature/**]
 
 jobs:
-  quick-lint:
-    name: Quick lint
+  lint-and-format:
+    name: Lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          echo "📥 安装项目依赖"
+          pnpm install
+          echo "✓ 依赖安装完成"
+
+      - name: Format & Lint code
+        run: |
+          echo "📝 格式化代码"
+          pnpm prettier --check .
+          echo "✓ 格式化完成"
+          echo "✅ 质量检查"
+          pnpm eslint
+          echo "✓ 质量检查完成"
+
+  test:
+    name: Test
     runs-on: ubuntu-latest
 
     services:
@@ -42,8 +75,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
-          # cache: 'pnpm'
 
       - name: Install dependencies
         run: |
@@ -58,18 +89,18 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Application Version: $VERSION"
 
-      - name: Format & Lint code
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Run tests with coverage
         run: |
-          echo "📝 格式化代码"
-          pnpm prettier --check .
-          echo "✓ 格式化完成"
-          echo "✅ 质量检查"
-          pnpm eslint
-          echo "✓ 质量检查完成"
+          echo "🧪 运行测试"
+          pnpm test --ci --coverage
+          echo "✓ 测试完成"
 
   finished:
     name: Finished
-    needs: quick-lint
+    needs: [lint-and-format, test]
     if: always()
     runs-on: ubuntu-latest
     env:
@@ -82,15 +113,24 @@ jobs:
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
 
           # 获取 job 状态
-          LINT_STATUS="${{ needs.quick-lint.result }}"
+          LINT_FORMAT_STATUS="${{ needs.lint-and-format.result }}"
+          TEST_STATUS="${{ needs.test.result }}"
 
           # 状态图标映射
-          case "$LINT_STATUS" in
-            success) LINT_ICON="✅" ;;
-            failure) LINT_ICON="❌" ;;
-            cancelled) LINT_ICON="🚫" ;;
-            skipped) LINT_ICON="⏭️" ;;
-            *) LINT_ICON="❓" ;;
+          case "$LINT_FORMAT_STATUS" in
+            success) LINT_FORMAT_ICON="✅" ;;
+            failure) LINT_FORMAT_ICON="❌" ;;
+            cancelled) LINT_FORMAT_ICON="🚫" ;;
+            skipped) LINT_FORMAT_ICON="⏭️" ;;
+            *) LINT_FORMAT_ICON="❓" ;;
+          esac
+
+          case "$TEST_STATUS" in
+            success) TEST_ICON="✅" ;;
+            failure) TEST_ICON="❌" ;;
+            cancelled) TEST_ICON="🚫" ;;
+            skipped) TEST_ICON="⏭️" ;;
+            *) TEST_ICON="❓" ;;
           esac
 
           # 生成统一的 summary
@@ -98,6 +138,20 @@ jobs:
           # 🔬 CI 流程报告 - Feature Branch
           ## 📋 基本信息
           - **触发事件**: push
+          - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
+          - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
+          - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **提交信息**: ${{ env.COMMIT_MESSAGE }}
+          - **应用版本**: ${{ needs.test.outputs.version }}
+          ## 📝 执行状态
+          | Job | 状态 |
+          |-----|------|
+          | Lint and format | $LINT_FORMAT_ICON $LINT_FORMAT_STATUS |
+          | Test | $TEST_ICON $TEST_STATUS |
+          ## ⏰ 时间戳
+          - **完成时间 (UTC)**: $TIMESTAMP_UTC
+          - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
+          EOF
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **所属分支**: [${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }})
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})

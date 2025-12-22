@@ -23,39 +23,16 @@ jobs:
       version: ${{ steps.build-info.outputs.version }}
       sha7: ${{ steps.build-info.outputs.sha7 }}
       timestamp: ${{ steps.build-info.outputs.timestamp }}
-      snapshot-tag: ${{ steps.build-info.outputs.snapshot-tag }}
-      docker-image-snapshot-tag: ${{ steps.build-info.outputs.docker-image-snapshot-tag }}
+      snapshot_tag: ${{ steps.build-info.outputs.snapshot_tag }}
+      docker_image_snapshot_tag: ${{ steps.build-info.outputs.docker_image_snapshot_tag }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract build info
+      - name: Generate snapshot info
         id: build-info
-        run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          SHA7=${GITHUB_SHA:0:7}
-          TIMESTAMP=$(date +%Y%m%d)
-          SNAPSHOT_TAG="v${VERSION}-snapshot-${TIMESTAMP}-${SHA7}"
-          DOCKER_IMAGE_SNAPSHOT_TAG="${VERSION}-snapshot-${TIMESTAMP}-${SHA7}"
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "sha7=$SHA7" >> $GITHUB_OUTPUT
-          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
-          echo "snapshot-tag=$SNAPSHOT_TAG" >> $GITHUB_OUTPUT
-          echo "docker-image-snapshot-tag=$DOCKER_IMAGE_SNAPSHOT_TAG" >> $GITHUB_OUTPUT
-
-          echo "=========================================="
-          echo "📦 Build Information"
-          echo "=========================================="
-          echo "Application Version: $VERSION"
-          echo "Git Commit SHA (short): $SHA7"
-          echo "Build Timestamp: $TIMESTAMP"
-          echo "Snapshot Tag: $SNAPSHOT_TAG"
-          echo "---"
-          echo "Docker Image Tags:"
-          echo "  - $DOCKER_IMAGE_SNAPSHOT_TAG"
-          echo "=========================================="
+        run: node scripts/generate-snapshot-info.cjs
 
   check-snapshot-tag:
     name: Check snapshot tag
@@ -73,7 +50,7 @@ jobs:
         id: check
         run: |
           git fetch --tags
-          if git rev-parse "${{ needs.extract-build-info.outputs.snapshot-tag }}" >/dev/null 2>&1; then
+          if git rev-parse "${{ needs.extract-build-info.outputs.snapshot_tag }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
@@ -94,8 +71,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git tag "${{ needs.extract-build-info.outputs.snapshot-tag }}" ${{ github.sha }}; then
-            git push origin "${{ needs.extract-build-info.outputs.snapshot-tag }}" || {
+          if git tag "${{ needs.extract-build-info.outputs.snapshot_tag }}" ${{ github.sha }}; then
+            git push origin "${{ needs.extract-build-info.outputs.snapshot_tag }}" || {
               echo "Failed to push tag"
               exit 1
             }
@@ -129,7 +106,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker-image-snapshot-tag }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker_image_snapshot_tag }}
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             APP_VERSION=${{ needs.extract-build-info.outputs.version }}
@@ -215,7 +192,7 @@ jobs:
           if [ "$PUSH_SNAPSHOT_TAG_STATUS" == "success" ]; then
             cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🏷️ 快照标签
-          - [${{ needs.extract-build-info.outputs.snapshot-tag }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-build-info.outputs.snapshot-tag }})
+          - [${{ needs.extract-build-info.outputs.snapshot_tag }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.extract-build-info.outputs.snapshot_tag }})
           EOF
 
           elif [ "$PUSH_SNAPSHOT_TAG_STATUS" == "skipped" ]; then
@@ -237,7 +214,7 @@ jobs:
           ## 📦 Docker 镜像
           - **仓库地址**: [Docker Hub/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}](https://hub.docker.com/repository/docker/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }})
           - **镜像标签**:
-            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker-image-snapshot-tag }}\`
+            - \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.extract-build-info.outputs.docker_image_snapshot_tag }}\`
           EOF
 
           elif [ "$BUILD_PUBLISH_STATUS" == "skipped" ]; then
