@@ -1,8 +1,12 @@
-name: CI - Release Branch
+name: CI - Production
 
 on:
   push:
-    branches: ['release-[0-9]*']
+    branches: [main]
+
+concurrency:
+  group: CI - Production
+  cancel-in-progress: true
 
 jobs:
   lint-and-format:
@@ -41,24 +45,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:18.1-alpine
-        env:
-          POSTGRES_USER: ci_test
-          POSTGRES_PASSWORD: ci_test_password
-          POSTGRES_DB: nestjs_demo_basic_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    env:
-      DB_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -104,27 +90,11 @@ jobs:
           name: coverage-report
           path: coverage/
 
-  check-version:
-    name: Check version
-    runs-on: ubuntu-latest
-    outputs:
-      is_valid: ${{ steps.validate.outputs.is_valid }}
-      expected_version_prefix: ${{ steps.validate.outputs.expected_version_prefix }}
-      actual_version: ${{ steps.validate.outputs.actual_version }}
-      message_cn: ${{ steps.validate.outputs.message_cn }}
-      message_en: ${{ steps.validate.outputs.message_en }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Validate release version
-        id: validate
-        run: node scripts/validate-release-version.cjs
-
   finished:
     name: Finished
-    needs: [lint-and-format, test, check-version]
+    needs:
+      - lint-and-format
+      - test
     if: always()
     runs-on: ubuntu-latest
     env:
@@ -139,7 +109,6 @@ jobs:
           # 获取 job 状态
           LINT_FORMAT_STATUS="${{ needs.lint-and-format.result }}"
           TEST_STATUS="${{ needs.test.result }}"
-          CHECK_VERSION_STATUS="${{ needs.check-version.result }}"
 
           # 状态图标映射
           case "$LINT_FORMAT_STATUS" in
@@ -158,17 +127,9 @@ jobs:
             *) TEST_ICON="❓" ;;
           esac
 
-          case "$CHECK_VERSION_STATUS" in
-            success) CHECK_VERSION_ICON="✅" ;;
-            failure) CHECK_VERSION_ICON="❌" ;;
-            cancelled) CHECK_VERSION_ICON="🚫" ;;
-            skipped) CHECK_VERSION_ICON="⏭️" ;;
-            *) CHECK_VERSION_ICON="❓" ;;
-          esac
-
           # 生成统一的 summary
           cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🔬 CI 流程报告 - Release Branch
+          # 🔬 CI 流程报告 - Production
           ## 📋 基本信息
           - **触发事件**: push
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
@@ -181,27 +142,6 @@ jobs:
           |-----|------|
           | Lint and format | $LINT_FORMAT_ICON $LINT_FORMAT_STATUS |
           | Test | $TEST_ICON $TEST_STATUS |
-          | Check version | $CHECK_VERSION_ICON $CHECK_VERSION_STATUS |
-          EOF
-
-          # 显示版本检查详情
-          if [ "$CHECK_VERSION_STATUS" == "success" ]; then
-            cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## ✅ 版本验证
-          - ${{ needs.check-version.outputs.message_cn }}
-          - ${{ needs.check-version.outputs.message_en }}
-          EOF
-          elif [ "$CHECK_VERSION_STATUS" == "failure" ]; then
-            cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## ❌ 版本验证失败
-          - ${{ needs.check-version.outputs.message_cn }}
-          - ${{ needs.check-version.outputs.message_en }}
-          - **期望版本**: ${{ needs.check-version.outputs.expected_version_prefix }}.x
-          - **实际版本**: ${{ needs.check-version.outputs.actual_version }}
-          EOF
-          fi
-
-          cat >> $GITHUB_STEP_SUMMARY << EOF
           ## ⏰ 时间戳
           - **完成时间 (UTC)**: $TIMESTAMP_UTC
           - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN

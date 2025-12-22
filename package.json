@@ -1,7 +1,7 @@
 {
   "name": "nestjs-demo-basic",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "一个使用 NestJS 构建的示例项目",
   "license": "MIT",
   "type": "module",
@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "commit": "cz",
     "prepare": "husky"
   },
@@ -42,8 +43,6 @@
     "tsc-alias": "^1.8.16"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.2.0",
-    "@commitlint/config-conventional": "^20.2.0",
     "@eslint/js": "^9.39.2",
     "@nestjs/testing": "^11.1.9",
     "@types/express": "^5.0.6",

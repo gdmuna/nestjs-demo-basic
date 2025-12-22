@@ -82,9 +82,8 @@
 
 - **ESLint** - 代码检查（配置：`eslint.config.js`）
 - **Prettier** - 代码格式化
-- **Commitlint** - 提交信息规范（配置：`commitlint.config.js`）
 - **Commitizen** - 交互式提交助手
-- **Husky** - Git 钩子（commit-msg 验证）
+- **Husky** - Git 钩子
 - **Lint-staged** - 暂存文件检查
 
 ### 测试框架

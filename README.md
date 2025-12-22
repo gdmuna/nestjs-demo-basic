@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/pnpm-8.x-F69220?logo=pnpm&logoColor=white" alt="pnpm" />
   <img src="https://img.shields.io/badge/License-MIT-success?logo=opensourceinitiative&logoColor=white" alt="License" />
-  <img src="https://img.shields.io/github/stars/FOV-RGT/nestjs-demo-basic?style=social" alt="GitHub stars" />
+  <img src="https://img.shields.io/github/stars/gdmuna/nestjs-demo-basic?style=social" alt="GitHub stars" />
 </p>
 
 <p align="center">
@@ -32,7 +32,6 @@
 <p align="center">
   <img src="https://via.placeholder.com/800x400/1a1a1a/00d8ff?text=Demo+Screenshot" alt="项目截图" />
   <br/>
-  <em>💡 提示：录制一个 5-10 秒的 GIF 展示从克隆到启动的完整流程</em>
 </p>
 
 </div>
@@ -56,7 +55,7 @@
 | 痛点               | 解决方案                              |
 | ------------------ | ------------------------------------- |
 | **环境配置繁琐**   | 一键初始化，5 分钟启动完整开发环境    |
-| **代码质量难保证** | ESLint + Prettier + Commitlint 全家桶 |
+| **代码质量难保证** | ESLint + Prettier 全家桶              |
 | **版本管理混乱**   | 自动化语义化版本控制，PR 合并即打 tag |
 | **CI/CD 缺失**     | 6 个开箱即用的 GitHub Actions 工作流  |
 | **团队协作困难**   | 统一的代码规范 + 提交规范 + Git 钩子  |
@@ -68,7 +67,7 @@
 + ✅ 完整的 CI/CD 工作流（自动测试、自动部署、自动发布）
 + ✅ 自动化版本管理（Semantic Versioning + Changelog 生成）
 + ✅ 生产级数据库集成（Prisma + 迁移管理 + 类型安全）
-+ ✅ 企业级代码规范（Commitlint + Husky + Lint-staged）
++ ✅ 企业级代码规范（Husky + Lint-staged）
 + ✅ 双语文档支持（中英文 README 和 CHANGELOG）
 - ⚠️  其他模板：基础配置，需要自行完善
 - ⚠️  其他模板：缺少 CI/CD，手动部署
@@ -94,7 +93,6 @@
 - ⚡ **热重载** - 开发模式自动重启
 - 🧪 **Jest** - 单元测试与 E2E 测试
 - 🎨 **ESLint + Prettier** - 代码格式化
-- 📝 **Commitlint** - 规范化提交信息
 - ⚙️ **Husky** - Git 钩子管理
 
 ### CI/CD
@@ -195,7 +193,6 @@ nestjs-demo-basic/
 │   └── e2e/                   # E2E 测试
 ├── .env.example               # 环境变量模板
 ├── .husky/                    # Git 钩子
-├── commitlint.config.js       # 提交信息规范
 ├── Dockerfile                 # Docker 镜像
 ├── package.json               # 项目配置
 └── README.md                  # 项目文档
@@ -463,14 +460,13 @@ flowchart LR
 
 ### 开发工具
 
-| 工具       | 用途         |
-| ---------- | ------------ |
-| ESLint     | 代码检查     |
-| Prettier   | 代码格式化   |
-| Commitlint | 提交信息验证 |
-| Husky      | Git 钩子     |
-| Jest       | 测试框架     |
-| Supertest  | HTTP 测试    |
+| 工具      | 用途       |
+| --------- | ---------- |
+| ESLint    | 代码检查   |
+| Prettier  | 代码格式化 |
+| Husky     | Git 钩子   |
+| Jest      | 测试框架   |
+| Supertest | HTTP 测试  |
 
 ## 🔧 故障排查
 

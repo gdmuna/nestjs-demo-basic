@@ -6,8 +6,41 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  lint-and-test:
-    name: Lint and test
+  lint-and-format:
+    name: Lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          echo "📥 安装项目依赖"
+          pnpm install
+          echo "✓ 依赖安装完成"
+
+      - name: Format & Lint code
+        run: |
+          echo "📝 格式化代码"
+          pnpm format:check
+          echo "✓ 格式化完成"
+          echo "✅ 质量检查"
+          pnpm lint
+          echo "✓ 质量检查完成"
+
+  test:
+    name: Test
     runs-on: ubuntu-latest
 
     services:
@@ -43,8 +76,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          # 若远程仓库中存在依赖锁文件，且需要缓存依赖以加速构建过程，可取消下一行注释
-          # cache: 'pnpm'
 
       - name: Install dependencies
         run: |
@@ -62,15 +93,6 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma generate
 
-      - name: Format & Lint code
-        run: |
-          echo "📝 格式化代码"
-          pnpm prettier --check .
-          echo "✓ 格式化完成"
-          echo "✅ 质量检查"
-          pnpm eslint
-          echo "✓ 质量检查完成"
-
       - name: Run tests with coverage
         run: |
           echo "🧪 运行测试"
@@ -85,11 +107,13 @@ jobs:
 
   finished:
     name: Finished
-    needs: lint-and-test
+    needs: [lint-and-format, test]
     if: always()
     runs-on: ubuntu-latest
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+      PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
 
     steps:
       - name: Generate summary
@@ -97,16 +121,31 @@ jobs:
           TIMESTAMP_UTC=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
 
+          # 转义特殊字符，防止破坏 Markdown
+          PR_TITLE_ESCAPED="${PR_TITLE//$'\n'/ }"
+          PR_TITLE_ESCAPED="${PR_TITLE_ESCAPED//\`/\\\`}"
+          PR_HEAD_REPO_ESCAPED="${PR_HEAD_REPO//\`/\\\`}"
+          PR_HEAD_REF_ESCAPED="${PR_HEAD_REF//\`/\\\`}"
+
           # 获取 job 状态
-          LINT_TEST_STATUS="${{ needs.lint-and-test.result }}"
+          LINT_FORMAT_STATUS="${{ needs.lint-and-format.result }}"
+          TEST_STATUS="${{ needs.test.result }}"
 
           # 状态图标映射
-          case "$LINT_TEST_STATUS" in
-            success) LINT_ICON="✅" ;;
-            failure) LINT_ICON="❌" ;;
-            cancelled) LINT_ICON="🚫" ;;
-            skipped) LINT_ICON="⏭️" ;;
-            *) LINT_ICON="❓" ;;
+          case "$LINT_FORMAT_STATUS" in
+            success) LINT_FORMAT_ICON="✅" ;;
+            failure) LINT_FORMAT_ICON="❌" ;;
+            cancelled) LINT_FORMAT_ICON="🚫" ;;
+            skipped) LINT_FORMAT_ICON="⏭️" ;;
+            *) LINT_FORMAT_ICON="❓" ;;
+          esac
+
+          case "$TEST_STATUS" in
+            success) TEST_ICON="✅" ;;
+            failure) TEST_ICON="❌" ;;
+            cancelled) TEST_ICON="🚫" ;;
+            skipped) TEST_ICON="⏭️" ;;
+            *) TEST_ICON="❓" ;;
           esac
 
           # 生成统一的 summary
@@ -115,14 +154,15 @@ jobs:
           ## 📋 基本信息
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **PR**: [#${{ github.event.pull_request.number }} - ${PR_TITLE_ESCAPED}](${{ github.event.pull_request.html_url }})
+          - **源分支 → 目标分支**: [${PR_HEAD_REPO_ESCAPED}/${PR_HEAD_REF_ESCAPED} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - **应用版本**: ${{ needs.lint-and-test.outputs.version }}
+          - **应用版本**: ${{ needs.test.outputs.version }}
           ## 📝 执行状态
           | Job | 状态 |
           |-----|------|
-          | Lint and test | $LINT_ICON $LINT_TEST_STATUS |
+          | Lint and format | $LINT_FORMAT_ICON $LINT_FORMAT_STATUS |
+          | Test | $TEST_ICON $TEST_STATUS |
           ## ⏰ 时间戳
           - **完成时间 (UTC)**: $TIMESTAMP_UTC
           - **完成时间 (Asia/Shanghai)**: $TIMESTAMP_CN
