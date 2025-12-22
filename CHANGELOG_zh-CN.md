@@ -5,6 +5,155 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2025-12-23
+
+### 🔒 安全修复
+
+#### 命令注入漏洞修复
+
+- **version-utils.cjs 命令注入防护**：使用 `execFileSync` 代替 `execSync`，通过参数数组传递避免 shell 注入
+    - 添加 `validateVersionPrefixFormat()` 函数，严格验证版本前缀格式（只允许 `X.Y`）
+    - 新增 `execGit()` 函数，安全地执行 git 命令
+    - 修复 `getExistingTags()` 使用不安全的 shell 命令拼接问题
+
+#### Workflow 脚本注入防护
+
+- **用户输入转义**：所有 workflow 中的用户可控输入添加转义处理
+    - PR 标题、分支名、提交信息等通过环境变量传递，避免直接插值
+    - 移除换行符并转义反引号，防止破坏 Markdown 格式
+    - 影响文件：`auto-tag-release.yaml`、`pr-check-dev.yaml`、`pr-check-prod.yaml`、`ci-release.yaml`、`release-snapshot.yaml`
+
+#### 变量引用规范化
+
+- **统一 git 命令变量引用**：`auto-tag-release.yaml` 中所有 `git rev-list` 命令的 `TAG_NAME` 变量统一加引号（`"${TAG_NAME}"`）
+
+### ⚡ CI/CD 改进
+
+#### Workflow 架构重构
+
+- **并行 Job 执行**：所有 workflow 重构为独立并行 job，提升执行效率
+    - `pr-check-dev.yaml`：拆分为 `lint-and-format` + `test`
+    - `pr-check-prod.yaml`：拆分为 `lint-and-format` + `test` + `check-version`（条件执行）
+    - `ci-feature.yaml`：拆分为 `lint-and-format` + `test`
+    - `ci-release.yaml`：拆分为 `lint-and-format` + `test` + `check-version`
+    - `ci-cd-dev.yaml`：拆分为 `lint-and-format` + `test` + `build-and-publish`
+
+#### 生产环境 CI/CD 分离
+
+- **ci-cd-prod.yaml 拆分**：
+    - `ci-prod.yaml`：CI 流程（main 分支 push 触发，仅 lint + test）
+    - `cd-prod.yaml`：CD 流程（v\* tag 触发，负责 Docker 构建和发布）
+
+#### Docker 镜像标签策略简化
+
+- **标签数量优化**：从 5+ 个标签简化为 3 个
+    - 开发环境：`dev-latest`、`dev-YYYYMMDD-hash`、版本号
+    - 生产环境：`prod-latest`、`prod-YYYYMMDD-hash`、版本号
+- **移除冗余标签**：删除 `image-tag-version` 输出和相关生成逻辑
+
+#### 版本管理脚本
+
+- **scripts/validate-version.cjs**：PR 版本验证脚本
+    - 检查 package.json 版本是否匹配 release 分支
+    - 生成中英双语验证结果评论
+    - 支持 `BRANCH_NAME` 环境变量传参（防止命令注入）
+
+- **scripts/validate-release-version.cjs**：Release 分支版本验证
+    - 提取 release 分支版本前缀（如 `release-0.4` → `0.4`）
+    - 验证 package.json 版本是否为 `X.Y` 格式
+
+- **scripts/generate-snapshot-info.cjs**：快照版本信息生成
+    - 替换原 bash 脚本，使用 JavaScript 实现
+    - 输出：version、sha7、timestamp、snapshot_tag、docker_image_snapshot_tag
+
+- **scripts/create-release-tag.cjs**：自动创建 Release 标签
+    - 验证版本号有效性
+    - 计算下一个 patch 版本
+    - 创建 tag（不推送，由 workflow 推送）
+    - 支持 `RELEASE_BRANCH`/`BRANCH_NAME` 环境变量
+
+- **scripts/version-utils.cjs**：版本管理通用工具库
+    - `extractVersionPrefix()`：提取版本前缀并验证
+    - `getExistingTags()`：安全获取现有 tag 列表
+    - `calculateNextPatch()`：计算下一个 patch 号
+    - `validatePackageVersion()`：验证 package.json 版本
+
+#### PR 评论优化
+
+- **自动清理旧评论**：`pr-check-prod.yaml` 自动删除旧的版本检查评论
+    - 通过 HTML 注释标识符 `<!-- version-check-comment -->` 识别
+    - 只删除 `github-actions[bot]` 发表的评论，避免误删
+
+#### 其他改进
+
+- **Node.js 版本显式指定**：`release-snapshot.yaml` 添加 `setup-node` 步骤，确保使用 Node.js 22
+- **修复语法错误**：移除 `release-snapshot.yaml` 中多余的 echo 语句
+- **workflow 触发条件优化**：`auto-tag-release.yaml` 移除命令行参数，直接使用环境变量
+
+### 📚 文档更新
+
+#### Commitlint 相关清理
+
+- **移除 Commitlint 引用**：从文档中移除已删除工具的引用
+    - 更新 `README.md`：删除 5 处 Commitlint 提及
+    - 更新 `.github/copilot-instructions.md`：移除技术栈中的 Commitlint
+    - 说明：提交信息规范仍推荐遵循，但不再通过 Git hooks 强制验证
+
+#### 项目说明完善
+
+- **更新核心特性描述**：突出 CI/CD 工作流、版本管理等核心能力
+
+### 🗑️ 移除
+
+#### 工具链简化
+
+- **删除 Commitlint 配置**：
+    - 删除 `commitlint.config.js`
+    - 删除 `.husky/commit-msg` Git 钩子
+    - 从 `package.json` 移除 `@commitlint/cli` 和 `@commitlint/config-conventional` 依赖
+
+### 📦 依赖变更
+
+- 移除 `@commitlint/cli` (v20.2.0)
+- 移除 `@commitlint/config-conventional` (v20.2.0)
+
+### 🔧 技术细节
+
+#### 文件变更统计
+
+```
+21 files changed, 2358 insertions(+), 449 deletions(-)
+```
+
+#### 新增文件
+
+- `scripts/validate-version.cjs` (114 行)
+- `scripts/validate-release-version.cjs` (127 行)
+- `scripts/generate-snapshot-info.cjs` (85 行)
+- `scripts/create-release-tag.cjs` (88 行)
+- `scripts/version-utils.cjs` (185 行)
+- `.github/workflows/ci-prod.yaml` (148 行)
+- `.github/workflows/cd-prod.yaml` (105 行)
+
+#### 重命名文件
+
+- `.github/workflows/ci-cd-prod.yaml` → `.github/workflows/cd-prod.yaml`
+
+#### 删除文件
+
+- `commitlint.config.js`
+- `.husky/commit-msg`
+
+#### 修改文件（主要变更）
+
+- `.github/workflows/auto-tag-release.yaml` (+/-177 行)
+- `.github/workflows/pr-check-prod.yaml` (+/-193 行)
+- `.github/workflows/ci-release.yaml` (+/-128 行)
+- `.github/copilot-instructions.md` (+383 行)
+- `README.md` (+551 行)
+
+---
+
 ## [0.3.1] - 2025-12-21
 
 ### 变更
