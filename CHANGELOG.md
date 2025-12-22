@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2025-12-23
+
+### ⚡ CI/CD Improvements
+
+#### PAT Token Support for Cross-Workflow Triggering
+
+- **auto-tag-release.yaml enhancement**: Added support for Personal Access Token (PAT) to enable triggering cd-prod.yaml workflow
+    - Added comprehensive documentation comment explaining GitHub Actions security limitation
+    - Configured to use `PAT_TOKEN` from repository secrets (falls back to `GITHUB_TOKEN` if not configured)
+    - Updated checkout step to use PAT token
+    - Updated Git credentials configuration to use PAT token
+    - **Context**: GitHub Actions default `GITHUB_TOKEN` cannot trigger other workflows when pushing tags/code (prevents infinite recursion)
+
+### 📚 Documentation
+
+#### PAT Configuration Guide
+
+- **New documentation file**: Created `docs/github-pat-setup.md` with detailed PAT setup instructions
+    - Step-by-step guide for creating Fine-grained Personal Access Token
+    - Repository secrets configuration instructions
+    - Security best practices and token management guidelines
+    - Troubleshooting and FAQ section
+
+- **README.md enhancement**: Added PAT configuration section in CI/CD workflow documentation
+    - Added warning about GitHub Actions security limitation
+    - Quick setup guide (3-minute configuration)
+    - Impact explanation for unconfigured PAT scenarios
+    - Link to detailed setup documentation
+
+### 🔧 Technical Details
+
+#### File Changes
+
+```
+3 files changed, 52 insertions(+), 2 deletions(-)
+```
+
+#### Modified Files
+
+- `.github/workflows/auto-tag-release.yaml` (+19 lines)
+- `README.md` (+33 lines)
+- `package.json` (version bump: 0.4.1 → 0.4.2)
+
+---
+
+## [0.4.1] - 2025-12-23
+
+### ⚡ CI/CD Improvements
+
+#### Production Deployment Workflow Enhancement
+
+- **cd-prod.yaml enhancement**: Added manual trigger capability with custom tag input
+    - Added `workflow_dispatch` trigger allowing manual deployment
+    - Added `tag` input parameter (e.g., v0.4.0) for specifying deployment target
+    - Updated checkout step to support both automatic (tag push) and manual (workflow_dispatch) triggers
+    - Enhanced tag extraction logic to handle both trigger types
+    - **Use case**: Manual deployment when PAT is not configured or for emergency deployments
+
+#### CI Workflow Database Testing Support
+
+- **ci-prod.yaml enhancement**: Added PostgreSQL service container for testing
+    - Configured PostgreSQL 18.1-alpine service container
+    - Set up health checks for container readiness
+    - Configured test database credentials via environment variables
+    - Port mapping: 5432:5432 for localhost access
+    - **Purpose**: Enable running tests that require database connections in CI environment
+
+### 🔧 Technical Details
+
+#### File Changes
+
+```
+3 files changed, 32 insertions(+), 2 deletions(-)
+```
+
+#### Modified Files
+
+- `.github/workflows/cd-prod.yaml` (+14 lines)
+- `.github/workflows/ci-prod.yaml` (+18 lines)
+- `package.json` (version bump: 0.4.0 → 0.4.1)
+
+---
+
 ## [0.4.0] - 2025-12-23
 
 ### 🔒 Security

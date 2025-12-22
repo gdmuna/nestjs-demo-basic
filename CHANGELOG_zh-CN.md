@@ -5,6 +5,89 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.2] - 2025-12-23
+
+### ⚡ CI/CD 改进
+
+#### PAT Token 支持跨工作流触发
+
+- **auto-tag-release.yaml 增强**：添加 Personal Access Token (PAT) 支持，以触发 cd-prod.yaml 工作流
+    - 添加详细的文档注释，说明 GitHub Actions 安全限制
+    - 配置使用仓库 Secrets 中的 `PAT_TOKEN`（如未配置则回退到 `GITHUB_TOKEN`）
+    - 更新 checkout 步骤使用 PAT token
+    - 更新 Git 凭证配置使用 PAT token
+    - **背景说明**：GitHub Actions 默认的 `GITHUB_TOKEN` 推送标签/代码时不会触发其他工作流（防止无限递归）
+
+### 📚 文档更新
+
+#### PAT 配置指南
+
+- **新增文档文件**：创建 `docs/github-pat-setup.md`，详细说明 PAT 配置步骤
+    - 创建 Fine-grained Personal Access Token 的分步指南
+    - 仓库 Secrets 配置说明
+    - 安全最佳实践和 token 管理指南
+    - 故障排查和常见问题解答
+
+- **README.md 增强**：在 CI/CD 工作流文档中添加 PAT 配置章节
+    - 添加关于 GitHub Actions 安全限制的警告说明
+    - 快速配置指南（3 分钟配置）
+    - 未配置 PAT 的影响说明
+    - 链接到详细配置文档
+
+### 🔧 技术细节
+
+#### 文件变更统计
+
+```
+3 个文件变更，52 行新增(+)，2 行删除(-)
+```
+
+#### 修改的文件
+
+- `.github/workflows/auto-tag-release.yaml` (+19 行)
+- `README.md` (+33 行)
+- `package.json` (版本号：0.4.1 → 0.4.2)
+
+---
+
+## [0.4.1] - 2025-12-23
+
+### ⚡ CI/CD 改进
+
+#### 生产部署工作流增强
+
+- **cd-prod.yaml 增强**：添加手动触发功能，支持自定义标签输入
+    - 添加 `workflow_dispatch` 触发器，允许手动部署
+    - 添加 `tag` 输入参数（如 v0.4.0），用于指定部署目标
+    - 更新 checkout 步骤，同时支持自动触发（标签推送）和手动触发（workflow_dispatch）
+    - 增强标签提取逻辑，处理两种触发类型
+    - **使用场景**：PAT 未配置时的手动部署，或紧急部署场景
+
+#### CI 工作流数据库测试支持
+
+- **ci-prod.yaml 增强**：添加 PostgreSQL 服务容器用于测试
+    - 配置 PostgreSQL 18.1-alpine 服务容器
+    - 设置容器健康检查以确保就绪
+    - 通过环境变量配置测试数据库凭证
+    - 端口映射：5432:5432 用于本地访问
+    - **用途**：在 CI 环境中运行需要数据库连接的测试
+
+### 🔧 技术细节
+
+#### 文件变更统计
+
+```
+3 个文件变更，32 行新增(+)，2 行删除(-)
+```
+
+#### 修改的文件
+
+- `.github/workflows/cd-prod.yaml` (+14 行)
+- `.github/workflows/ci-prod.yaml` (+18 行)
+- `package.json` (版本号：0.4.0 → 0.4.1)
+
+---
+
 ## [0.4.0] - 2025-12-23
 
 ### 🔒 安全修复
