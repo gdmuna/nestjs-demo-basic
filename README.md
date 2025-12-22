@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/pnpm-8.x-F69220?logo=pnpm&logoColor=white" alt="pnpm" />
   <img src="https://img.shields.io/badge/License-MIT-success?logo=opensourceinitiative&logoColor=white" alt="License" />
-  <img src="https://img.shields.io/github/stars/FOV-RGT/nestjs-demo-basic?style=social" alt="GitHub stars" />
+  <img src="https://img.shields.io/github/stars/gdmuna/nestjs-demo-basic?style=social" alt="GitHub stars" />
 </p>
 
 <p align="center">
@@ -32,7 +32,6 @@
 <p align="center">
   <img src="https://via.placeholder.com/800x400/1a1a1a/00d8ff?text=Demo+Screenshot" alt="项目截图" />
   <br/>
-  <em>💡 提示：录制一个 5-10 秒的 GIF 展示从克隆到启动的完整流程</em>
 </p>
 
 </div>
