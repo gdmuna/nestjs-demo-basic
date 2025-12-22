@@ -147,12 +147,35 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const comment = process.env.COMMENT_TEXT.replace(/%0A/g, '\n');
+            const commentIdentifier = '<!-- version-check-comment -->';
+            const commentBody = `${commentIdentifier}\n${comment}`;
 
+            // 查找并删除之前的版本检查评论
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            for (const oldComment of comments) {
+              if (oldComment.body?.includes(commentIdentifier) &&
+                  oldComment.user?.type === 'Bot' &&
+                  oldComment.user?.login === 'github-actions[bot]') {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: oldComment.id
+                });
+                console.log(`Deleted old version check comment #${oldComment.id}`);
+              }
+            }
+
+            // 发送新评论
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              body: commentBody
             });
 
       - name: Fail if version check failed
