@@ -134,7 +134,9 @@ jobs:
 
       - name: Check package version
         id: check_version
-        run: node scripts/validate-version.cjs "${{ github.event.pull_request.head.ref }}"
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: node scripts/validate-version.cjs $BRANCH_NAME
         continue-on-error: true
 
       - name: Comment on PR with version check result

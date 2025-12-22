@@ -46,7 +46,9 @@ jobs:
 
       - name: Create release tag
         id: create_tag
-        run: node scripts/create-release-tag.cjs "${{ github.event.pull_request.head.ref }}"
+        env:
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: node scripts/create-release-tag.cjs $RELEASE_BRANCH
         continue-on-error: true
 
       - name: Push tag (with conflict detection)
@@ -89,6 +91,9 @@ jobs:
 
       - name: Generate summary
         if: always() && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-')
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           # 检查版本验证状态
           VERSION_VALID="${{ steps.create_tag.outputs.version_valid }}"
@@ -103,8 +108,8 @@ jobs:
           ## 📋 基本信息
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **PR**: [#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
+          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ env.PR_HEAD_REF }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
 
           ## ❌ 版本检查结果
           - **期望版本**: \`${{ steps.create_tag.outputs.expected_version }}\`
@@ -127,8 +132,8 @@ jobs:
           ## 📋 基本信息
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
-          - **PR**: [#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **PR**: [#${{ github.event.pull_request.number }} - ${{ env.PR_TITLE }}](${{ github.event.pull_request.html_url }})
+          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${{ env.PR_HEAD_REF }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           ## 📦 Package version
           - **源版本 → 新版本**: ${{ steps.version.outputs.version }} → ${{ steps.create_tag.outputs.new_version }}

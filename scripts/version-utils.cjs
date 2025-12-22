@@ -6,7 +6,7 @@
  * 共用的版本相关工具函数，供其他脚本使用
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -30,6 +30,39 @@ function exec(command, options = {}) {
 }
 
 /**
+ * 安全地执行 git 命令（防止命令注入）
+ */
+function execGit(args, options = {}) {
+    try {
+        const result = execFileSync('git', args, {
+            encoding: 'utf8',
+            stdio: options.silent ? 'pipe' : 'inherit',
+            ...options,
+        });
+        return result ? result.trim() : '';
+    } catch (error) {
+        if (options.ignoreError) {
+            return '';
+        }
+        throw error;
+    }
+}
+
+/**
+ * 验证版本前缀格式是否安全（只允许 X.Y 格式）
+ * @param {string} versionPrefix - 待验证的版本前缀
+ * @throws {Error} 如果格式不合法
+ */
+function validateVersionPrefixFormat(versionPrefix) {
+    const validPattern = /^[0-9]+\.[0-9]+$/;
+    if (!validPattern.test(versionPrefix)) {
+        throw new Error(
+            `Invalid version prefix format: "${versionPrefix}". Expected format: X.Y (e.g., 1.0, 2.15)`
+        );
+    }
+}
+
+/**
  * 从 release 分支名提取版本前缀
  * @param {string} branchName - release 分支名（如 release-1.0）
  * @returns {string} 版本前缀（如 1.0）
@@ -39,7 +72,12 @@ function extractVersionPrefix(branchName) {
     if (!branchName.startsWith('release-')) {
         throw new Error(`Invalid branch name: ${branchName}. Expected format: release-X.Y`);
     }
-    return branchName.replace('release-', '');
+    const versionPrefix = branchName.replace('release-', '');
+
+    // 安全验证：防止命令注入
+    validateVersionPrefixFormat(versionPrefix);
+
+    return versionPrefix;
 }
 
 /**
@@ -48,8 +86,12 @@ function extractVersionPrefix(branchName) {
  * @returns {string[]} 符合格式的 tag 列表（如 ['v1.0.0', 'v1.0.1']）
  */
 function getExistingTags(versionPrefix) {
+    // 安全验证：防止命令注入
+    validateVersionPrefixFormat(versionPrefix);
+
+    // 使用 execFileSync 传递参数数组，防止命令注入
     const tagPattern = `v${versionPrefix}.*`;
-    const tags = exec(`git tag -l "${tagPattern}"`, { silent: true, ignoreError: true });
+    const tags = execGit(['tag', '-l', tagPattern], { silent: true, ignoreError: true });
 
     if (!tags) {
         return [];
@@ -132,10 +174,12 @@ function setGitHubOutput(name, value) {
 
 module.exports = {
     exec,
+    execGit,
     extractVersionPrefix,
     getExistingTags,
     calculateNextPatch,
     getPackageVersion,
     validatePackageVersion,
     setGitHubOutput,
+    validateVersionPrefixFormat,
 };
