@@ -93,11 +93,13 @@ jobs:
         if: always() && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-')
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           # 转义特殊字符，防止破坏 Markdown
           PR_TITLE_ESCAPED="${PR_TITLE//$'\n'/ }"
           PR_TITLE_ESCAPED="${PR_TITLE_ESCAPED//\`/\\\`}"
+          PR_HEAD_REPO_ESCAPED="${PR_HEAD_REPO//\`/\\\`}"
           PR_HEAD_REF_ESCAPED="${PR_HEAD_REF//\`/\\\`}"
 
           # 检查版本验证状态
@@ -114,7 +116,7 @@ jobs:
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **PR**: [#${{ github.event.pull_request.number }} - ${PR_TITLE_ESCAPED}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${{ github.event.pull_request.head.repo.full_name }}/${PR_HEAD_REF_ESCAPED} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **源分支 → 目标分支**: [${PR_HEAD_REPO_ESCAPED}/${PR_HEAD_REF_ESCAPED} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
 
           ## ❌ 版本检查结果
           - **期望版本**: \`${{ steps.create_tag.outputs.expected_version }}\`

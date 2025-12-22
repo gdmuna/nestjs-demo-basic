@@ -192,6 +192,7 @@ jobs:
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+      PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
 
     steps:
       - name: Generate summary
@@ -203,6 +204,7 @@ jobs:
           PR_TITLE_ESCAPED="${PR_TITLE//$'\n'/ }"
           PR_TITLE_ESCAPED="${PR_TITLE_ESCAPED//\`/\\\`}"
           PR_HEAD_REPO_ESCAPED="${PR_HEAD_REPO//\`/\\\`}"
+          PR_HEAD_REF_ESCAPED="${PR_HEAD_REF//\`/\\\`}"
 
           # 获取各个 job 状态
           TEST_STATUS="${{ needs.test.result }}"
@@ -231,7 +233,7 @@ jobs:
           - **触发事件**: pull_request
           - **代码仓库**: [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})
           - **PR**: [#${{ github.event.pull_request.number }} - ${PR_TITLE_ESCAPED}](${{ github.event.pull_request.html_url }})
-          - **源分支 → 目标分支**: [${PR_HEAD_REPO_ESCAPED}/${{ github.event.pull_request.head.ref }} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
+          - **源分支 → 目标分支**: [${PR_HEAD_REPO_ESCAPED}/${PR_HEAD_REF_ESCAPED} → ${{ github.base_ref }}](${{ github.event.pull_request.html_url }}/changes)
           - **提交哈希**: [${GITHUB_SHA:0:7}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           - **应用版本**: ${{ needs.check-version.outputs.version || 'N/A' }}
           ## 📝 执行状态
