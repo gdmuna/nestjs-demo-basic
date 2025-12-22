@@ -90,10 +90,10 @@ jobs:
       - name: Format & Lint code
         run: |
           echo "📝 格式化代码"
-          pnpm prettier --check .
+          pnpm format:check
           echo "✓ 格式化完成"
           echo "✅ 质量检查"
-          pnpm eslint
+          pnpm lint
           echo "✓ 质量检查完成"
 
   check-version:

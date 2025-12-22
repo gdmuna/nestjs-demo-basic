@@ -30,6 +30,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Generate snapshot info
         id: build-info
         run: node scripts/generate-snapshot-info.cjs

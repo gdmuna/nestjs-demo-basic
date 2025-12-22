@@ -17,6 +17,7 @@
     "lint:fix": "eslint --fix",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "commit": "cz",
     "prepare": "husky"
   },
