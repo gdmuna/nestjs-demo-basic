@@ -8,9 +8,9 @@
 # 1. 创建 PAT（Settings → Developer settings → Personal access tokens → Fine-grained tokens）
 # 2. 权限设置：Repository permissions → Contents = Read and write
 # 3. 将 PAT 添加到仓库 Secrets（Settings → Secrets and variables → Actions → New repository secret）
-# 4. Secret 名称：PAT_TOKEN
+# 4. Secret 名称：PAT
 #
-# 如果未配置 PAT_TOKEN，工作流会回退到 GITHUB_TOKEN，但不会触发 CD 流程。
+# 如果未配置 PAT，工作流会回退到 GITHUB_TOKEN，但不会触发 CD 流程。
 name: Auto Tag Release
 
 on:
@@ -22,7 +22,7 @@ permissions:
   contents: write
 
 env:
-  TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+  TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
 concurrency:
   group: auto-tag-release-${{ github.event.pull_request.base.ref }}
