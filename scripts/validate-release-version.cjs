@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { setGitHubOutput } = require('./version-utils.cjs');
 
 // 从 release 分支名称提取版本前缀（major.minor）
 function extractExpectedVersionPrefix(ref) {
@@ -48,14 +49,6 @@ function extractMajorMinor(version) {
         throw new Error(`Invalid version format: ${version}. Expected: X.Y.Z`);
     }
     return match[1];
-}
-
-// 设置 GitHub Actions 输出
-function setGitHubOutput(key, value) {
-    const outputFile = process.env.GITHUB_OUTPUT;
-    if (outputFile) {
-        fs.appendFileSync(outputFile, `${key}=${value}\n`, 'utf8');
-    }
 }
 
 /**

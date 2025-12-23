@@ -23,20 +23,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const { setGitHubOutput } = require('./version-utils.cjs');
 
 // 获取 package.json 中的版本号
 function getPackageVersion() {
     const packagePath = path.join(process.cwd(), 'package.json');
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
     return packageJson.version;
-}
-
-// 设置 GitHub Actions 输出
-function setGitHubOutput(key, value) {
-    const outputFile = process.env.GITHUB_OUTPUT;
-    if (outputFile) {
-        fs.appendFileSync(outputFile, `${key}=${value}\n`, 'utf8');
-    }
 }
 
 /**
