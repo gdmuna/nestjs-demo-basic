@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { setGitHubOutput } = require('./version-utils.cjs');
 
 // 获取 package.json 中的版本号
 function getPackageVersion() {
@@ -31,15 +32,13 @@ function getPackageVersion() {
     return packageJson.version;
 }
 
-// 设置 GitHub Actions 输出
-function setGitHubOutput(key, value) {
-    const outputFile = process.env.GITHUB_OUTPUT;
-    if (outputFile) {
-        fs.appendFileSync(outputFile, `${key}=${value}\n`, 'utf8');
-    }
-}
-
-// 主函数
+/**
+ * 生成并输出用于 GitHub Actions 的快照版本信息，并将相关字段写入 GITHUB_OUTPUT。
+ *
+ * 从环境变量和本地 package.json 中提取版本与提交信息，构建短 SHA、日期戳、快照标签和镜像标签，
+ * 将这些值打印到控制台并通过 setGitHubOutput 写入 GitHub Actions 输出文件；在成功时以退出码 0 结束，
+ * 在发生错误（例如缺少 GITHUB_SHA 或读取 package.json 失败）时记录错误并以退出码 1 结束。
+ */
 function main() {
     try {
         // 获取环境变量
