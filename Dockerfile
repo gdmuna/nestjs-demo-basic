@@ -73,6 +73,6 @@ ENV PORT=$PORT
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl --fail http://localhost:${PORT:-3000}/health
+    CMD curl --fail http://localhost:${PORT}/health
 # 启动应用
 CMD ["node", "dist/src/main.js"]
