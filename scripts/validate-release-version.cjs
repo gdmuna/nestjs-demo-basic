@@ -58,7 +58,13 @@ function setGitHubOutput(key, value) {
     }
 }
 
-// 主函数
+/**
+ * 执行 release 分支与 package.json 版本前缀的校验。
+ *
+ * 读取环境变量 `GITHUB_REF` 和工作目录下 `package.json` 的 `version`，比较 release 分支名中的期望前缀（X.Y）与实际版本的 major.minor。
+ * 将校验结果和说明（`is_valid`、`expected_version_prefix`、`actual_version`、`message_cn`、`message_en`）写入 GitHub Actions 输出（通过 `GITHUB_OUTPUT`），
+ * 并根据校验结果以退出码 0（通过）或 1（失败或发生错误）结束进程。
+ */
 function main() {
     try {
         // 获取环境变量
