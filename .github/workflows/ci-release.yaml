@@ -4,6 +4,10 @@ on:
   push:
     branches: ['release-[0-9]*']
 
+concurrency:
+  group: ci-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-format:
     name: Lint and format

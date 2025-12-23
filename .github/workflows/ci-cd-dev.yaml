@@ -12,7 +12,7 @@ env:
   BACKEND_HOST_PORT: ${{ vars.DEV_BACKEND_HOST_PORT || 3000 }}
 
 concurrency:
-  group: CI/CD - Development
+  group: ci/cd-development-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

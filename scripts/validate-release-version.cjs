@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { setGitHubOutput } = require('./version-utils.cjs');
 
 // 从 release 分支名称提取版本前缀（major.minor）
 function extractExpectedVersionPrefix(ref) {
@@ -50,15 +51,13 @@ function extractMajorMinor(version) {
     return match[1];
 }
 
-// 设置 GitHub Actions 输出
-function setGitHubOutput(key, value) {
-    const outputFile = process.env.GITHUB_OUTPUT;
-    if (outputFile) {
-        fs.appendFileSync(outputFile, `${key}=${value}\n`, 'utf8');
-    }
-}
-
-// 主函数
+/**
+ * 执行 release 分支与 package.json 版本前缀的校验。
+ *
+ * 读取环境变量 `GITHUB_REF` 和工作目录下 `package.json` 的 `version`，比较 release 分支名中的期望前缀（X.Y）与实际版本的 major.minor。
+ * 将校验结果和说明（`is_valid`、`expected_version_prefix`、`actual_version`、`message_cn`、`message_en`）写入 GitHub Actions 输出（通过 `GITHUB_OUTPUT`），
+ * 并根据校验结果以退出码 0（通过）或 1（失败或发生错误）结束进程。
+ */
 function main() {
     try {
         // 获取环境变量
@@ -124,4 +123,8 @@ function main() {
     }
 }
 
-main();
+if (require.main === module) {
+    main();
+}
+
+module.exports = { main };

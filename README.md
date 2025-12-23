@@ -375,7 +375,7 @@ GitHub Actions 的安全限制：使用默认 `GITHUB_TOKEN` 推送的标签、�
 2. **添加到仓库 Secrets**
     - 访问：仓库 → Settings → Secrets and variables → Actions
     - 点击 "New repository secret"
-    - Name: `PAT_TOKEN`
+    - Name: `PAT`
     - Secret: 粘贴你的 token
 
 3. **验证配置**

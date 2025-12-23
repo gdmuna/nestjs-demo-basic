@@ -4,6 +4,10 @@ on:
   push:
     branches: ['release-[0-9]*']
 
+concurrency:
+  group: release-snapshot-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 

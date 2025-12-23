@@ -4,6 +4,10 @@ on:
   push:
     branches: [feature/**]
 
+concurrency:
+  group: ci-feature-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-format:
     name: Lint and format
