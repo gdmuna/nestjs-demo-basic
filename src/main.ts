@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module.js';
+import figlet from 'figlet';
+import { atlas } from 'gradient-string';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -26,7 +28,15 @@ async function bootstrap() {
         }
         process.exit(1);
     });
-    logger.log(`✅ 应用已启动: http://localhost:${port}`);
+    logger.log(`✅ 服务已启动于: http://localhost:${port}\n`);
+    process.stdout.write(
+        atlas.multiline(
+            (await figlet.text('NestJS-Demo-Basic', {
+                font: 'Slant',
+                horizontalLayout: 'fitted',
+            })) + `\nv${process.env.npm_package_version} | by FOV-RGT\n`
+        )
+    );
 }
 
 bootstrap();
