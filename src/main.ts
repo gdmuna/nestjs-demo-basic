@@ -6,7 +6,7 @@ import { atlas } from 'gradient-string';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
-    const logger = new Logger('AppModule');
+    const logger = new Logger('Bootstrap');
     const port = parseInt(process.env.PORT ?? '3000', 10);
     await app.listen(port).catch((err) => {
         if (err.code === 'EADDRINUSE') {
@@ -34,7 +34,9 @@ async function bootstrap() {
         horizontalLayout: 'fitted',
     });
     process.stdout.write(
-        atlas.multiline(startupBanner + `\nv${process.env.npm_package_version} | by FOV-RGT\n`)
+        atlas.multiline(
+            startupBanner + `\nv${process.env.npm_package_version ?? '0.0.0'} | by FOV-RGT\n`
+        )
     );
 }
 
