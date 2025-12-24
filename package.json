@@ -36,6 +36,8 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "dotenv": "^17.2.3",
+    "figlet": "^1.9.4",
+    "gradient-string": "^3.0.0",
     "pg": "^8.16.3",
     "prisma": "^7.2.0",
     "reflect-metadata": "^0.2.2",
