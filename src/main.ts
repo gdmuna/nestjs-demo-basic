@@ -29,13 +29,12 @@ async function bootstrap() {
         process.exit(1);
     });
     logger.log(`✅ 服务已启动于: http://localhost:${port}\n`);
+    const startupBanner = await figlet.text('NestJS-Demo-Basic', {
+        font: 'Slant',
+        horizontalLayout: 'fitted',
+    });
     process.stdout.write(
-        atlas.multiline(
-            (await figlet.text('NestJS-Demo-Basic', {
-                font: 'Slant',
-                horizontalLayout: 'fitted',
-            })) + `\nv${process.env.npm_package_version} | by FOV-RGT\n`
-        )
+        atlas.multiline(startupBanner + `\nv${process.env.npm_package_version} | by FOV-RGT\n`)
     );
 }
 
