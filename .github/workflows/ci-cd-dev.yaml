@@ -178,7 +178,7 @@ jobs:
           ssh -p ${{ secrets.DEPLOY_PORT || 22 }} \
               -i ~/.ssh/deploy_key \
               ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-              "bash /tmp/deploy.sh '${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-version }}' 'nestjs-demo-basic' '${{ env.BACKEND_HOST_PORT }}' ${{ env.DB_URL }} '1panel-network'"
+              "bash /tmp/deploy.sh '${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-latest }}' 'fovrgt-nestjs-demo-basic' '${{ env.BACKEND_HOST_PORT }}' ${{ env.DB_URL }} '1panel-network'"
 
   finished:
     name: Finished

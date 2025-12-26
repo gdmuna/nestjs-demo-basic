@@ -81,6 +81,20 @@ DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
     --log-opt max-file=3 \
     $DOCKER_IMAGE"
 
+# 清理占用该端口的其他容器
+echo -e "${YELLOW}🔓 检查端口 $PORT 是否被其他容器占用...${NC}"
+CONFLICTING_CONTAINERS=$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ":$PORT->" | awk '{print $1}')
+if [ -n "$CONFLICTING_CONTAINERS" ]; then
+    while IFS= read -r CONTAINER; do
+        if [ -n "$CONTAINER" ] && [ "$CONTAINER" != "$CONTAINER_NAME" ]; then
+            echo -e "${YELLOW}⚠️  发现其他容器占用端口 $PORT: $CONTAINER，正在清理...${NC}"
+            docker stop $CONTAINER || true
+            # docker rm $CONTAINER || true
+        fi
+    done <<< "$CONFLICTING_CONTAINERS"
+    sleep 1
+fi
+
 # 运行新容器
 echo -e "${YELLOW}🚀 启动新容器...${NC}"
 eval $DOCKER_RUN_CMD
