@@ -148,6 +148,38 @@ jobs:
             NODE_ENV=development
             PORT=${{ env.BACKEND_CONTAINER_PORT }}
 
+  deploy:
+    name: Deploy to development server
+    needs: build-and-publish
+    if: "needs.build-and-publish.result == 'success'"
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.DEPLOY_PORT || 22 }} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deploy script
+        run: |
+          scp -P ${{ secrets.DEPLOY_PORT || 22 }} \
+              -i ~/.ssh/deploy_key \
+              scripts/deploy-server.sh \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/deploy.sh
+
+      - name: Deploy application
+        run: |
+          ssh -p ${{ secrets.DEPLOY_PORT || 22 }} \
+              -i ~/.ssh/deploy_key \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "bash /tmp/deploy.sh '${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO_NAME }}:${{ needs.build-and-publish.outputs.image-tag-version }}' 'nestjs-demo-basic' '${{ env.BACKEND_HOST_PORT }}' ${{ env.DB_URL }} '1panel-network'"
+
   finished:
     name: Finished
     needs:
