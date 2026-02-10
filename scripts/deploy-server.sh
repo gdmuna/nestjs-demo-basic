@@ -8,9 +8,9 @@ set -e
 # 参数解析
 DOCKER_IMAGE=$1
 CONTAINER_NAME=${2:-nestjs-app}
-PORT=${3:-3001}
-DB_URL=${4}
-NETWORK=${5}
+PORT=${3:-3000}
+DB_URL=$4
+NETWORK=$5
 
 # 颜色定义
 RED='\033[0;31m'
@@ -29,11 +29,6 @@ fi
 if [ -z "$DB_URL" ]; then
     echo -e "${YELLOW}⚠️  警告: 未提供数据库URL，容器可能无法连接数据库${NC}"
     echo -e "${YELLOW}   建议使用: bash deploy-server.sh $DOCKER_IMAGE $CONTAINER_NAME $PORT \"postgresql://...\"${NC}"
-    read -p "继续部署？(y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
 fi
 
 echo -e "${BLUE}================================${NC}"
@@ -47,6 +42,20 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     docker rm $CONTAINER_NAME || true
 fi
 
+# 清理占用该端口的其他容器
+echo -e "${YELLOW}🔓 检查端口 $PORT 是否被其他容器占用...${NC}"
+CONFLICTING_CONTAINERS=$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ":$PORT->" | awk '{print $1}')
+if [ -n "$CONFLICTING_CONTAINERS" ]; then
+    while IFS= read -r CONTAINER; do
+        if [ -n "$CONTAINER" ] && [ "$CONTAINER" != "$CONTAINER_NAME" ]; then
+            echo -e "${YELLOW}⚠️  发现其他容器占用端口 $PORT: $CONTAINER，正在清理...${NC}"
+            docker stop $CONTAINER || true
+            # docker rm $CONTAINER || true
+        fi
+    done <<< "$CONFLICTING_CONTAINERS"
+    sleep 1
+fi
+
 # 拉取最新镜像
 echo -e "${YELLOW}⬇️  拉取Docker镜像...${NC}"
 docker pull $DOCKER_IMAGE
@@ -58,8 +67,7 @@ OLD_IMAGE_ID=$(docker images --format "{{.ID}}" $DOCKER_IMAGE 2>/dev/null | head
 DOCKER_RUN_CMD="docker run -d \
     --name $CONTAINER_NAME \
     --restart unless-stopped \
-    -p $PORT:3000 \
-    -e NODE_ENV=production"
+    -p $PORT:3000"
 
 # 如果提供了网络参数，加入指定网络
 if [ -n "$NETWORK" ]; then
@@ -80,20 +88,6 @@ DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
     --log-opt max-size=10m \
     --log-opt max-file=3 \
     $DOCKER_IMAGE"
-
-# 清理占用该端口的其他容器
-echo -e "${YELLOW}🔓 检查端口 $PORT 是否被其他容器占用...${NC}"
-CONFLICTING_CONTAINERS=$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ":$PORT->" | awk '{print $1}')
-if [ -n "$CONFLICTING_CONTAINERS" ]; then
-    while IFS= read -r CONTAINER; do
-        if [ -n "$CONTAINER" ] && [ "$CONTAINER" != "$CONTAINER_NAME" ]; then
-            echo -e "${YELLOW}⚠️  发现其他容器占用端口 $PORT: $CONTAINER，正在清理...${NC}"
-            docker stop $CONTAINER || true
-            # docker rm $CONTAINER || true
-        fi
-    done <<< "$CONFLICTING_CONTAINERS"
-    sleep 1
-fi
 
 # 运行新容器
 echo -e "${YELLOW}🚀 启动新容器...${NC}"
@@ -158,3 +152,5 @@ echo "健康检查: http://localhost:${PORT}/health"
 echo "查看日志: docker logs -f $CONTAINER_NAME"
 echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo -e "${BLUE}================================${NC}"
+
+exit 0

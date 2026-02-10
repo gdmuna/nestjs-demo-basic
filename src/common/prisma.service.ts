@@ -6,8 +6,12 @@ import { PrismaClient } from '@root/prisma/generated/client.js';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
     constructor() {
+        const DB_URL = process.env.DB_URL;
+        if (!DB_URL) {
+            throw new Error('DB_URL environment variable is not set');
+        }
         const adapter = new PrismaPg({
-            connectionString: process.env.DB_URL,
+            connectionString: DB_URL,
         });
         super({ adapter });
     }

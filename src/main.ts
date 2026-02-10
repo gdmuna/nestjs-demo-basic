@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module.js';
+
 import figlet from 'figlet';
 import { atlas } from 'gradient-string';
 

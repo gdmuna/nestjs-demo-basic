@@ -9,6 +9,7 @@ export class AppService {
         private readonly prismaService: PrismaService,
         private readonly configService: ConfigService
     ) {}
+
     getHello() {
         return 'Hello World!';
     }
