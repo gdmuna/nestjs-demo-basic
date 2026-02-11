@@ -58,10 +58,10 @@
     "strict": true,
 
     // 未使用的局部变量警告
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
 
     // 未使用的函数参数警告
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
 
     // 函数必须有 return 语句
     "noImplicitReturns": true,
