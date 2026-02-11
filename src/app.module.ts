@@ -18,7 +18,7 @@ import { LoggerModule } from 'nestjs-pino';
             {
                 name: 'short',
                 ttl: 1000, // 1秒
-                limit: process.env.NODE_ENV !== 'development' ? Infinity : 3,
+                limit: process.env.NODE_ENV === 'development' ? Infinity : 3,
             },
             {
                 name: 'long',
@@ -43,16 +43,12 @@ import { LoggerModule } from 'nestjs-pino';
                     err: () => undefined, // 错误堆栈交由 exceptions.filter 处理，避免重复记录
                     // 请求序列化
                     req: (req) => {
-                        const isDev = process.env.NODE_ENV !== 'production';
                         return {
                             id: req.id,
                             method: req.method,
                             url: req.url,
-                            // 开发环境记录 query 和 params
-                            ...(isDev && {
-                                query: req.query,
-                                params: req.params,
-                            }),
+                            query: req.query,
+                            params: req.params,
                             // 只记录部分关键 headers
                             headers: {
                                 'user-agent': req.headers['user-agent'],
