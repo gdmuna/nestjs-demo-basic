@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController, TestController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -6,12 +6,17 @@ import { DatabaseService } from './common/database.service.js';
 import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
-import { PerformanceInterceptor, RequestContextInterceptor } from './common/interceptors/index.js';
+import {
+    PerformanceInterceptor,
+    RequestContextInterceptor,
+    ResponseFormatInterceptor,
+} from './common/interceptors/index.js';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 import { IS_DEV, IS_PROD } from './utils/constants.js';
 import { Logger } from '@/common/logger.service.js';
+import { RequestPreprocessingMiddleware } from './common/middleware/request-preprocessing.middleware.js';
 
 @Module({
     imports: [
@@ -106,6 +111,10 @@ import { Logger } from '@/common/logger.service.js';
     controllers: [AppController, TestController],
     providers: [
         {
+            provide: APP_FILTER,
+            useClass: AllExceptionsFilter,
+        },
+        {
             provide: APP_PIPE,
             useClass: ZodValidationPipe,
         },
@@ -119,11 +128,11 @@ import { Logger } from '@/common/logger.service.js';
         },
         {
             provide: APP_INTERCEPTOR,
-            useClass: ZodSerializerInterceptor,
+            useClass: ResponseFormatInterceptor,
         },
         {
-            provide: APP_FILTER,
-            useClass: AllExceptionsFilter,
+            provide: APP_INTERCEPTOR,
+            useClass: ZodSerializerInterceptor,
         },
         {
             provide: APP_GUARD,
@@ -134,4 +143,8 @@ import { Logger } from '@/common/logger.service.js';
         Logger,
     ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer.apply(RequestPreprocessingMiddleware).forRoutes('*');
+    }
+}

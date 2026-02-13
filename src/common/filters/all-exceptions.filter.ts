@@ -62,8 +62,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
             success: false,
             code,
             message,
-            url: request.url,
             timestamp: new Date().toISOString(),
+            requestId: request.id || 'unknown',
             details,
         };
         response.status(status).json(exceptionRes);

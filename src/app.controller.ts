@@ -38,7 +38,9 @@ export class AppController {
     @Post('/change-logging-level')
     changeLoggerLevel(@Body('level') level: string) {
         PinoLogger.root.level = level;
-        this.logger.info(`Logger level changed to [${level}]`);
+        const message = `Logger level changed to [${level}]`;
+        this.logger.info(message);
+        return message;
     }
 }
 @Controller('test')
@@ -94,7 +96,7 @@ export class TestController {
             // 执行一个耗时 200ms 的查询，pg_sleep 在 WHERE 子句中执行避免返回 void
             await this.prisma.$queryRaw`
                 SELECT 1
-                -- WHERE pg_sleep(0.2) IS NULL OR true
+                WHERE pg_sleep(0.2) IS NULL OR true
             `;
             return {
                 message: 'Slow query executed (200ms)',
@@ -116,7 +118,7 @@ export class TestController {
             // 执行一个耗时 600ms 的查询
             const result = await this.prisma.$queryRaw<Array<{ result: number }>>`
                 SELECT 1 as result
-                WHERE pg_sleep(0.6) 
+                WHERE pg_sleep(0.6) IS NULL OR true
             `;
             return {
                 message: 'Very slow query executed (600ms)',
