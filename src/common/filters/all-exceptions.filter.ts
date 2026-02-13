@@ -23,7 +23,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
 
-        const { message, code, status, details } = this.parseException(exception);
+        const { message, code, status, details, level } = this.parseException(exception);
 
         const stack = (exception as any).stack ?? 'No stack trace available';
 
@@ -43,12 +43,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
             details,
         };
 
-        if (status >= 500) {
+        if (level === 'error' || (!level && status >= 500)) {
             this.logger.error(logContext, `Internal error\n${stack}`);
-        } else if (status === 429) {
+        } else if (level === 'warn' || (!level && status === 429)) {
             // 限流 - warn 级别
             this.logger.warn(logContext, `Rate limit exceeded\n${stack}`);
-        } else if (status >= 400) {
+        } else if (level === 'info' || (!level && status >= 400)) {
             // 其他客户端错误 - info 级别
             this.logger.info(logContext, `Client error\n${stack}`);
         } else {
@@ -138,7 +138,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         return {
             message: (exception as any).message ?? 'Unexpected Internal Server Error',
             code: 'UNEXPECTED_INTERNAL_SERVER_ERROR',
-            status: 666,
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
+            level: 'fatal',
         };
     }
 

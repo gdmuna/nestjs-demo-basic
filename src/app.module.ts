@@ -10,6 +10,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 import { IS_DEV, IS_PROD } from './utils/constants.js';
+import { Logger } from '@/common/logger.service.js';
 
 @Module({
     imports: [
@@ -32,7 +33,7 @@ import { IS_DEV, IS_PROD } from './utils/constants.js';
             pinoHttp: [
                 {
                     name: process.env.npm_package_name,
-                    level: !IS_PROD ? 'trace' : 'info',
+                    level: process.env.LOG_LEVEL || (!IS_PROD ? 'trace' : 'info'),
                     // prettier-ignore
                     transport:
                     IS_DEV ? {
@@ -93,8 +94,9 @@ import { IS_DEV, IS_PROD } from './utils/constants.js';
             ],
             // 排除的日志记录路径和方法
             exclude: [
-                { path: 'hello', method: RequestMethod.ALL },
-                { path: 'health', method: RequestMethod.ALL },
+                { path: '/hello', method: RequestMethod.ALL },
+                { path: '/health', method: RequestMethod.ALL },
+                { path: '/logger/*', method: RequestMethod.ALL },
             ],
         }),
     ],
@@ -118,6 +120,7 @@ import { IS_DEV, IS_PROD } from './utils/constants.js';
         },
         AppService,
         PrismaService,
+        Logger,
     ],
 })
 export class AppModule {}

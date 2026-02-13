@@ -6,7 +6,7 @@ import { IS_DEV } from '@/utils/constants.js';
 type LEVELS = 'verbose' | 'debug' | 'log' | 'warn' | 'error' | 'fatal';
 
 /**
- * @description: 自定义 Logger 服务，增强日志功能
+ * @description 自定义 Logger 服务，增强日志功能
  * - 提供了 trace、debug、info、warn、error、fatal 等日志级别方法
  * - 在日志输出失败时，自动降级到 console 方法，确保日志不丢失
  * - 可以在日志中添加上下文信息，便于定位问题
@@ -26,6 +26,7 @@ export class Logger extends NestLogger {
                     break;
                 case 'log':
                     super.log(message, context);
+                    // throw new Error('Simulated logger error for testing fallback mechanism');
                     break;
                 case 'warn':
                     super.warn(message, context);

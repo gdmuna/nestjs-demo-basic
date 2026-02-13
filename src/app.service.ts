@@ -2,18 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';
 import { PrismaService } from './common/prisma.service.js';
 import { ConfigService } from '@nestjs/config';
-import { PinoLogger } from 'nestjs-pino';
+import { Logger } from '@/common/logger.service.js';
 
 @Injectable()
 export class AppService {
+    private readonly logger = new Logger(AppService.name);
     constructor(
         private readonly prismaService: PrismaService,
-        private readonly configService: ConfigService,
-        private readonly logger: PinoLogger
+        private readonly configService: ConfigService
     ) {}
 
     getHello() {
-        this.logger.trace('Handling getHello request');
+        this.logger.verbose('Handling getHello request');
         return 'Hello World!';
     }
 

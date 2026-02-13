@@ -4,6 +4,7 @@ import { Body, Post, HttpStatus, HttpException } from '@nestjs/common';
 import { BusinessException } from './common/exceptions/business.exception.js';
 import { LoginDto } from './app.dto.js';
 import { Logger } from '@/common/logger.service.js';
+import { PinoLogger } from 'nestjs-pino';
 
 @Controller()
 export class AppController {
@@ -12,7 +13,7 @@ export class AppController {
 
     @Get('hello')
     getHello() {
-        // this.logger.verbose({ message: 'wtf', ttt: 666 }, '666');
+        this.logger.verbose({ message: 'wtf', someParams: 'damn' }, '666');
         // throw new HttpException(
         //     {
         //         message: 'Simula Internal Exception',
@@ -45,5 +46,11 @@ export class AppController {
                 HttpStatus.UNAUTHORIZED
             );
         }
+    }
+
+    @Post('/logger/change-logging-level')
+    changeLoggerLevel(@Body('level') level: string) {
+        PinoLogger.root.level = level;
+        this.logger.info(`Logger level changed to [${level}]`);
     }
 }
