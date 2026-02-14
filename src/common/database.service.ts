@@ -1,5 +1,4 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@root/prisma/generated/client.js';
 import { Logger } from './logger.service.js';
@@ -23,6 +22,10 @@ export class DatabaseService extends PrismaClient implements OnModuleDestroy, On
         }
         const adapter = new PrismaPg({
             connectionString: DB_URL,
+            max: 12,
+            min: 2, // 最小保持 2 个连接
+            idleTimeoutMillis: 30000, // 30秒空闲超时
+            connectionTimeoutMillis: 2000, // 2秒连接超时
         });
 
         // 开发环境启用查询日志

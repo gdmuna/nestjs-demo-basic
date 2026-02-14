@@ -22,14 +22,18 @@ async function bootstrap() {
     app.enableCors({
         origin: (origin: string, callback: any) => {
             const allowedOrigins =
-                process.env.ALLOWED_ORIGINS_PROD?.split(',').map((o) => o.trim()) || [];
+                process.env.ALLOWED_ORIGINS_PROD?.split(',')
+                    .map((o) => o.trim())
+                    .filter((o) => o) || [];
 
             if (
                 process.env.NODE_ENV === 'development' &&
                 typeof process.env.ALLOWED_ORIGINS_DEV === 'string'
             ) {
                 allowedOrigins.push(
-                    ...process.env.ALLOWED_ORIGINS_DEV.split(',').map((o) => o.trim())
+                    ...process.env.ALLOWED_ORIGINS_DEV.split(',')
+                        .map((o) => o.trim())
+                        .filter((o) => o)
                 );
             }
 

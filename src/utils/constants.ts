@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export const DEFAULT_PORT = Number(process.env.PORT);
 
 export const APP_VERSION = process.env.npm_package_version ?? '0.0.0';
