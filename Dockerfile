@@ -64,7 +64,7 @@ COPY package.json ./
 
 # 构建参数
 ARG GIT_COMMIT=unknown
-ARG APP_VERSION=0.0.0
+ARG APP_VERSION
 ARG NODE_ENV=production
 ARG PORT=3000
 
@@ -73,6 +73,8 @@ ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=$NODE_ENV
 ENV npm_package_version=$APP_VERSION
 ENV PORT=$PORT
+
+EXPOSE ${PORT}
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
