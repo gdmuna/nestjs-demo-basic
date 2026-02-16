@@ -42,7 +42,7 @@ RUN pnpm prisma generate
 RUN pnpm build
 
 # 清理 devDependencies 以减小镜像大小
-RUN pnpm prune --prod
+RUN pnpm prune --prod --ignore-scripts
 
 # ===== 运行阶段 =====
 FROM node:22-slim
