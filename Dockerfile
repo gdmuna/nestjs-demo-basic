@@ -16,15 +16,15 @@ COPY package.json ./
 # 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请取消下一行的注释
 # COPY pnpm-lock.yaml ./
 
-# ========== 安装生产依赖 (--ignore-scripts 跳过 prepare 脚本避免 husky 错误) ==========
+# ========== 安装所有依赖 (构建阶段需要 devDependencies 中的 TypeScript 和类型定义) ==========
 
 # 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请取消下一行的注释
-# RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+# RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # 若仓库中存在 pnpm-lock.yaml，且你想保证依赖版本一致、构建可复现，请注释掉下一行
-RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
-# ========== 安装生产依赖 (--ignore-scripts 跳过 prepare 脚本避免 husky 错误) ==========
+# ========== 安装所有依赖 (构建阶段需要 devDependencies 中的 TypeScript 和类型定义) ==========
 
 # 复制源代码
 COPY src ./src
@@ -40,6 +40,9 @@ RUN pnpm prisma generate
 
 # 构建项目
 RUN pnpm build
+
+# 清理 devDependencies 以减小镜像大小
+RUN pnpm prune --prod
 
 # ===== 运行阶段 =====
 FROM node:22-slim

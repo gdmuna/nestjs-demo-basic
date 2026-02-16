@@ -76,16 +76,21 @@ async function bootstrap() {
     logger.log(`✅ 服务已启动于: http://localhost:${port}`);
 }
 
-bootstrap().then(async () => {
-    // 等待 pino-pretty Worker 线程完成日志输出
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const startupBanner = await figlet.text('NestJS-Demo-Basic', {
-        font: 'Slant',
-        horizontalLayout: 'fitted',
+bootstrap()
+    .then(async () => {
+        // 等待 pino-pretty Worker 线程完成日志输出
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const startupBanner = await figlet.text('NestJS-Demo-Basic', {
+            font: 'Slant',
+            horizontalLayout: 'fitted',
+        });
+        process.stdout.write(
+            atlas.multiline(
+                startupBanner + `\nv${process.env.npm_package_version || '0.0.0'} | by FOV-RGT\n\n`
+            )
+        );
+    })
+    .catch((err) => {
+        console.error('Bootstrap failed:', err);
+        process.exit(1);
     });
-    process.stdout.write(
-        atlas.multiline(
-            startupBanner + `\nv${process.env.npm_package_version || '0.0.0'} | by FOV-RGT\n\n`
-        )
-    );
-});
