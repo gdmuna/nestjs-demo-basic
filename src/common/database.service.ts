@@ -58,7 +58,7 @@ export class DatabaseService extends PrismaClient implements OnModuleDestroy, On
                     version: requestContext?.version || 'unknown',
                     database: {
                         target: event.target ?? 'Unknown',
-                        timestamp: event.timestamp ?? new Date(),
+                        timestamp: event.timestamp ?? new Date().toISOString(),
                     },
                     error: {
                         message: event.message ?? 'Unknown error',
@@ -77,7 +77,7 @@ export class DatabaseService extends PrismaClient implements OnModuleDestroy, On
                     version: requestContext?.version || 'unknown',
                     database: {
                         message: event.message ?? 'Unknown error',
-                        timestamp: event.timestamp ?? new Date(),
+                        timestamp: event.timestamp ?? new Date().toISOString(),
                     },
                 },
                 `Database warning\n${event.stack ?? 'No stack trace available'}`
