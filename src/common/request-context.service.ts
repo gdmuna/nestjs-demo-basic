@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 interface RequestContext {
     requestId: string;
     userId?: string;
-    version: string;
+    version?: string;
     timestamp: number;
     // 其他需要传递的上下文
 }

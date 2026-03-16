@@ -35,7 +35,7 @@ export class PerformanceInterceptor implements NestInterceptor {
         const status = response.statusCode;
         const remoteAddress = request.ip || request.socket.remoteAddress;
         const remotePort = request.socket.remotePort;
-        const version = (request as any).version || 'unknown';
+        const version = request.version || 'unknown';
 
         return {
             requestId,
