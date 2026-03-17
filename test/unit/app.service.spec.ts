@@ -1,5 +1,5 @@
 import { AppService } from '@/app.service.js';
-import { DatabaseService } from '@/common/database.service.js';
+import { DatabaseService } from '@/infra/database/database.service.js';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';

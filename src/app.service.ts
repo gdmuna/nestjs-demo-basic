@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';
-import { DatabaseService } from '@/common/database.service.js';
+import { DatabaseService } from '@/infra/database/database.service.js';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@/common/logger.service.js';
 import { APP_VERSION } from '@/utils/constants.js';

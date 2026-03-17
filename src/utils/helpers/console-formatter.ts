@@ -28,11 +28,11 @@ export class ConsoleFormatter {
         if (typeof message === 'string') return { msg: message };
         else if (message instanceof Error)
             return {
-                msg: message.stack ?? context ?? message.message ?? 'No message',
+                msg: message.stack ?? context ?? message.message ?? 'N/A',
             };
         return {
             ...message,
-            msg: context ?? message.message ?? message.msg ?? 'No message',
+            msg: context ?? message.message ?? message.msg ?? 'N/A',
         };
     }
 }

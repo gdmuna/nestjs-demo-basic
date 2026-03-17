@@ -2,7 +2,7 @@ import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController, TestController } from '@/app.controller.js';
 import { AppService } from '@/app.service.js';
-import { DatabaseService } from '@/common/database.service.js';
+import { DatabaseService } from '@/infra/database/database.service.js';
 import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter.js';
@@ -17,8 +17,9 @@ import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 import { IS_DEV, IS_PROD, APP_NAME } from '@/utils/constants.js';
 import { Logger } from '@/common/logger.service.js';
-import { RequestPreprocessingMiddleware } from '@/common/middleware/request-preprocessing.middleware.js';
+import { RequestPreprocessingMiddleware } from '@/common/middleware/index.js';
 import { envValidationSchema } from '@/config/env.validation.js';
+import { AuthGuard } from '@/common/guards/index.js';
 
 @Module({
     imports: [
@@ -80,6 +81,10 @@ import { envValidationSchema } from '@/config/env.validation.js';
         {
             provide: APP_GUARD,
             useClass: ThrottlerGuard,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: AuthGuard,
         },
         {
             provide: APP_INTERCEPTOR,

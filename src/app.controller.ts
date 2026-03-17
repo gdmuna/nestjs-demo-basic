@@ -5,7 +5,8 @@ import { BusinessException } from '@/common/exceptions/business.exception.js';
 import { LoginDto } from '@/app.dto.js';
 import { Logger } from '@/common/logger.service.js';
 import { PinoLogger } from 'nestjs-pino';
-import { DatabaseService } from '@/common/database.service.js';
+import { DatabaseService } from '@/infra/database/database.service.js';
+import { Public } from '@/common/decorators/auth.decorator.js';
 
 @Controller()
 export class AppController {
@@ -52,6 +53,7 @@ export class TestController {
     ) {}
 
     @Get('hello-world')
+    @Public()
     getHello() {
         return this.appService.getHello();
     }

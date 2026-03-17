@@ -1,9 +1,9 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@root/prisma/generated/client.js';
-import { Logger } from './logger.service.js';
+import { Logger } from '../../common/logger.service.js';
 import { SLOW_QUERY_THRESHOLDS } from '@/utils/constants.js';
-import { RequestContextService } from './request-context.service.js';
+import { RequestContextService } from '../../common/request-context.service.js';
 
 /**
  * @description Prisma 数据库服务
