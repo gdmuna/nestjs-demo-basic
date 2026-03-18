@@ -23,7 +23,6 @@ export class AppController {
         // 模拟登录逻辑，实际应用中应验证用户名和密码
         if (body.username === 'admin' && body.password === 'password') {
             return {
-                success: true,
                 message: 'Login successful',
                 token: 'fake-jwt-token',
             };

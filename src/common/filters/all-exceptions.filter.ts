@@ -6,6 +6,8 @@ import { ZodValidationException, ZodSerializationException } from 'nestjs-zod';
 import { ZodError } from 'zod/v4';
 import { ThrottlerException } from '@nestjs/throttler';
 import { Logger } from '@/common/logger.service.js';
+import { ErrorDocumentationService } from '@/modules/error-catalog/error-catalog.service.js';
+import { RequestContextService } from '@/common/request-context.service.js';
 
 interface Request extends originRequest {
     user?: any;
@@ -18,6 +20,8 @@ interface Request extends originRequest {
 export class AllExceptionsFilter implements ExceptionFilter {
     private readonly logger = new Logger(AllExceptionsFilter.name);
 
+    constructor(private readonly errorDocumentationService: ErrorDocumentationService) {}
+
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const request = ctx.getRequest<Request>();
@@ -27,9 +31,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         const stack = (exception as any).stack ?? 'No stack trace available';
 
+        const requestContext = RequestContextService.get() ?? null;
+
         const logContext = {
-            requestId: request.id || 'unknown',
-            version: (request as any).version || 'unknown',
+            // requestId: request.id || 'unknown',
+            // version: (request as any).version || 'unknown',
+            timestamp: new Date().toISOString(),
             error: {
                 type: exception?.constructor?.name ?? 'Unknown',
                 code,
@@ -42,7 +49,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
                     username: request.user.username,
                 },
             }),
-            details,
+            requestContext: requestContext,
+            details: details ?? null,
         };
 
         if (level === 'error' || (!level && status >= 500)) {
@@ -65,9 +73,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
             success: false,
             code,
             message,
+            type: this.errorDocumentationService.getErrorTypeUrl(code),
             timestamp: new Date().toISOString(),
-            requestId: request.id || 'unknown',
-            details,
+            context: requestContext,
+            details: details ?? null,
+            // requestId: request.id || 'unknown',
+            // timestamp: new Date().toISOString(),
         };
         response.status(status).json(exceptionRes);
     }
@@ -91,15 +102,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
         // 处理请求参数验证异常
         if (exception instanceof ZodValidationException) {
             const zodError = exception.getZodError() as ZodError;
+            const details = zodError.issues.map((issue) => ({
+                field: issue.path.join('.'),
+                message: issue.message,
+                code: issue.code,
+            }));
+            RequestContextService.mergeResponseMetadata({ validationErrors: details });
             return {
                 message: 'Bad Request',
                 code: 'VALIDATION_FAILED',
                 status: HttpStatus.BAD_REQUEST,
-                details: zodError.issues.map((issue) => ({
-                    field: issue.path.join('.'),
-                    message: issue.message,
-                    code: issue.code,
-                })),
+                details,
             };
         }
 

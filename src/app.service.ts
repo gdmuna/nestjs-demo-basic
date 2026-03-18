@@ -3,7 +3,8 @@ import { uptime } from 'node:process';
 import { DatabaseService } from '@/infra/database/database.service.js';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@/common/logger.service.js';
-import { APP_VERSION } from '@/utils/constants.js';
+import { APP_VERSION } from '@/app.constant.js';
+import { RequestContextService } from './common/request-context.service.js';
 
 @Injectable()
 export class AppService {
@@ -15,6 +16,9 @@ export class AppService {
 
     getHello() {
         this.logger.verbose('Handling getHello request');
+        RequestContextService.mergeResponseMetadata({ exampleKey: '666', ccc: { aaa: 'wtf' } });
+        RequestContextService.mergeResponseMetadata({ exampleKey: 'exampleValue' });
+        RequestContextService.mergeResponseMetadata({ ccc: { bbb: 'omg', aaa: '999' } });
         return 'Hello World!';
     }
 

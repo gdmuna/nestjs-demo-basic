@@ -2,12 +2,14 @@
 // src/common/request-context.service.ts
 import { Injectable } from '@nestjs/common';
 import { AsyncLocalStorage } from 'async_hooks';
+import merge from 'lodash/merge.js';
 
-interface RequestContext {
+export interface RequestContext {
     requestId: string;
     userId?: string;
     version?: string;
-    timestamp: number;
+    time: number;
+    metadata?: Record<string, any>;
     // 其他需要传递的上下文
 }
 
@@ -28,5 +30,12 @@ export class RequestContextService {
     // 获取 requestId
     static getRequestId(): string | undefined {
         return this.get()?.requestId;
+    }
+
+    static mergeResponseMetadata(metadata: Record<string, any>) {
+        const context = this.get();
+        if (!context) return;
+        context.metadata = merge(context.metadata, metadata);
+        return context.metadata;
     }
 }

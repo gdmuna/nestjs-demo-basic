@@ -11,7 +11,7 @@ import { Logger } from '@/common/logger.service.js';
 
 import helmet from 'helmet';
 
-import { APP_VERSION } from '@/utils/constants.js';
+import { APP_VERSION } from '@/app.constant.js';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bufferLogs: true });

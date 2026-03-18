@@ -2,7 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@root/prisma/generated/client.js';
 import { Logger } from '../../common/logger.service.js';
-import { SLOW_QUERY_THRESHOLDS } from '@/utils/constants.js';
+import { SLOW_QUERY_THRESHOLDS } from '@/constants/index.js';
 import { RequestContextService } from '../../common/request-context.service.js';
 
 /**

@@ -8,18 +8,22 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter.js';
 import {
     PerformanceInterceptor,
-    RequestContextInterceptor,
     ResponseFormatInterceptor,
     TimeoutInterceptor,
 } from '@/common/interceptors/index.js';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
-import { IS_DEV, IS_PROD, APP_NAME } from '@/utils/constants.js';
+import { IS_DEV, IS_PROD } from '@/constants/index.js';
+import { APP_NAME } from '@/app.constant.js';
 import { Logger } from '@/common/logger.service.js';
-import { RequestPreprocessingMiddleware } from '@/common/middleware/index.js';
+import {
+    RequestPreprocessingMiddleware,
+    RequestScopeMiddleware,
+} from '@/common/middleware/index.js';
 import { envValidationSchema } from '@/config/env.validation.js';
 import { AuthGuard } from '@/common/guards/index.js';
+import { ErrorDocumentationModule } from '@/modules/index.js';
 
 @Module({
     imports: [
@@ -75,6 +79,7 @@ import { AuthGuard } from '@/common/guards/index.js';
                 }),
             ],
         }),
+        ErrorDocumentationModule,
     ],
     controllers: [AppController, TestController],
     providers: [
@@ -89,10 +94,6 @@ import { AuthGuard } from '@/common/guards/index.js';
         {
             provide: APP_INTERCEPTOR,
             useClass: PerformanceInterceptor,
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: RequestContextInterceptor,
         },
         {
             provide: APP_INTERCEPTOR,
@@ -121,6 +122,6 @@ import { AuthGuard } from '@/common/guards/index.js';
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
-        consumer.apply(RequestPreprocessingMiddleware).forRoutes('*');
+        consumer.apply(RequestPreprocessingMiddleware, RequestScopeMiddleware).forRoutes('*');
     }
 }

@@ -1,7 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Logger } from '@/common/logger.service.js';
 import { Request, Response } from 'express';
-import { SLOW_REQUEST_THRESHOLDS } from '@/utils/constants.js';
+import { SLOW_REQUEST_THRESHOLDS } from '@/constants/index.js';
 
 /**
  * @description 性能监控拦截器

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Logger as NestLogger } from '@nestjs/common';
-import { ConsoleFormatter } from '@/utils/helpers/console-formatter.js';
-import { IS_DEV } from '@/utils/constants.js';
+import { ConsoleFormatter } from '@/utils/console-formatter.js';
+import { IS_DEV } from '@/constants/index.js';
 
 type LEVELS = 'verbose' | 'debug' | 'log' | 'warn' | 'error' | 'fatal';
 
