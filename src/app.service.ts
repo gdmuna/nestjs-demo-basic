@@ -2,8 +2,7 @@ import { APP_VERSION } from '@/constants/index.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
 
-import { Logger } from '@/common/logger.service.js';
-import { RequestContextService } from '@/common/request-context.service.js';
+import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';

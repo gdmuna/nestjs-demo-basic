@@ -20,8 +20,7 @@ import { IS_DEV, IS_PROD, APP_NAME } from '@/constants/index.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
 
-import { Logger } from '@/common/logger.service.js';
-import { RequestContextService } from '@/common/request-context.service.js';
+import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';

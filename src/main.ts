@@ -2,7 +2,7 @@ import { AppModule } from './app.module.js';
 
 import { APP_VERSION } from '@/constants/index.js';
 
-import { Logger } from '@/common/logger.service.js';
+import { Logger } from '@/common/services/index.js';
 
 import { NestFactory } from '@nestjs/core';
 import figlet from 'figlet';

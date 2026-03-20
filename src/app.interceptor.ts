@@ -1,7 +1,6 @@
 import { SLOW_REQUEST_THRESHOLDS } from '@/constants/index.js';
 
-import { Logger } from '@/common/logger.service.js';
-import { RequestContextService } from '@/common/request-context.service.js';
+import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import {
     Injectable,

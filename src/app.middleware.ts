@@ -1,7 +1,6 @@
 import { APP_VERSION } from '@/constants/index.js';
 
-import { RequestContextService } from '@/common/request-context.service.js';
-import { Logger } from '@/common/logger.service.js';
+import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';

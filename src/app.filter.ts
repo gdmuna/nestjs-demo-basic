@@ -1,8 +1,7 @@
 import { ErrorCatalogService } from '@/modules/error-catalog/error-catalog.service.js';
 
 import { BusinessException } from '@/common/exceptions/index.js';
-import { Logger } from '@/common/logger.service.js';
-import { RequestContextService } from '@/common/request-context.service.js';
+import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';

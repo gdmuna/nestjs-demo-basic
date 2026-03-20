@@ -3,7 +3,7 @@ import { DatabaseService } from '@/infra/database/database.service.js';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
-import { RequestContextService } from '@/common/request-context.service.js';
+import { RequestContextService } from '@/common/services/index.js';
 
 // Mock PinoLogger
 const mockPinoLogger = {
