@@ -19,12 +19,13 @@ export class AppService {
 
     getHello() {
         this.logger.verbose('Handling getHello request');
-        this.requestContextService.mergeResponseMetadata({
+        this.requestContextService.get(); // 确保上下文已初始化
+        this.requestContextService.mergeContextMetadata({
             exampleKey: '666',
             ccc: { aaa: 'wtf' },
         });
-        this.requestContextService.mergeResponseMetadata({ exampleKey: 'exampleValue' });
-        this.requestContextService.mergeResponseMetadata({ ccc: { bbb: 'omg', aaa: '999' } });
+        this.requestContextService.mergeContextMetadata({ exampleKey: 'exampleValue' });
+        this.requestContextService.mergeContextMetadata({ ccc: { bbb: 'omg', aaa: '999' } });
         return 'Hello World!';
     }
 

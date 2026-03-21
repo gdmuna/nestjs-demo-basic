@@ -104,7 +104,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 message: issue.message,
                 code: issue.code,
             }));
-            this.requestContextService.mergeResponseMetadata({ validationErrors: details });
+            this.requestContextService.mergeContextMetadata({ validationErrors: details });
             return {
                 message: 'Bad Request',
                 code: 'VALIDATION_FAILED',
