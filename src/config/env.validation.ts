@@ -140,4 +140,29 @@ export const envValidationSchema = z.object({
             return String(parsed);
         })
         .optional(),
+    JWT_ACCESS_PRIVATE_KEY: z.string().optional(),
+    JWT_ACCESS_PUBLIC_KEY: z.string().optional(),
+    JWT_ACCESS_EXPIRES_IN: z.string().optional(),
+    JWT_REFRESH_PRIVATE_KEY: z.string().optional(),
+    JWT_REFRESH_PUBLIC_KEY: z.string().optional(),
+    JWT_REFRESH_EXPIRES_IN: z.string().optional(),
+    JWT_REFRESH_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).optional(),
+    JWT_REFRESH_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+    JWT_REFRESH_COOKIE_PATH: z.string().optional(),
+    JWT_REFRESH_COOKIE_MAX_AGE_MS: z
+        .string()
+        .transform((val, ctx) => {
+            if (!val) return val;
+            const parsed = parseInt(val);
+            if (isNaN(parsed) || parsed <= 0) {
+                ctx.addIssue({
+                    code: 'invalid_type',
+                    expected: 'positive integer',
+                    received: val,
+                });
+                return z.NEVER;
+            }
+            return String(parsed);
+        })
+        .optional(),
 });

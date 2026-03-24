@@ -20,9 +20,9 @@ import { IS_DEV, IS_PROD, APP_NAME } from '@/constants/index.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
 
-import { Logger, RequestContextService } from '@/common/services/index.js';
+import { RequestContextService } from '@/common/services/index.js';
 
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
@@ -30,6 +30,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 
+@Global()
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -115,13 +116,13 @@ import pino from 'pino';
         },
         AppService,
         DatabaseService,
-        Logger,
         RequestContextService,
         {
             provide: APP_FILTER,
             useClass: AllExceptionsFilter,
         },
     ],
+    exports: [RequestContextService],
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

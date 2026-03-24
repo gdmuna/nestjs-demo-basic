@@ -36,10 +36,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const logContext = {
             requestId: request.id || 'unknown',
             version: request.version || 'unknown',
-            ...(request.user && {
+            ...(request.jwtClaim?.user && {
                 user: {
-                    id: request.user.id,
-                    username: request.user.username,
+                    id: request.jwtClaim?.user.id,
+                    username: request.jwtClaim?.user.username,
                 },
             }),
             metadata: requestContext?.metadata ?? null,

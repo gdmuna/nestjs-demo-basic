@@ -1,17 +1,19 @@
-import { AuthService } from './auth.service.js';
+import { TokenService } from './services/index.js';
 
 import { IS_PUBLIC_KEY } from '@/common/decorators/index.js';
+import { BusinessException } from '@/common/exceptions/index.js';
+import { extractAccessTokenFromRequest } from '@/common/utils/index.js';
 
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-
 import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
     constructor(
-        private reflector: Reflector,
-        private authService: AuthService
+        private readonly reflector: Reflector,
+        private readonly tokenService: TokenService
     ) {}
 
     canActivate(context: ExecutionContext) {
@@ -21,34 +23,38 @@ export class AuthGuard implements CanActivate {
             context.getHandler(),
             context.getClass(),
         ]);
-        if (isPublic) {
-            const token = this.authService.extractTokenFromRequest(request);
-            if (!token) return true;
 
-            const claim = this.authService.validateToken(token);
+        const accessToken = extractAccessTokenFromRequest(request);
+
+        if (isPublic) {
+            if (!accessToken) return true;
+
+            const claim = this.tokenService.verifyToken(accessToken, 'access');
             if (claim) {
-                request.user = claim;
+                request.jwtClaim = claim;
             }
 
             return true;
         }
 
-        const authHeader = request.headers['authorization'];
-        if (!authHeader) {
-            return false;
+        if (!accessToken) {
+            throw new BusinessException(
+                'Missing access token',
+                'AUTH_FAILED',
+                HttpStatus.UNAUTHORIZED
+            );
         }
 
-        const token = this.authService.extractToken(authHeader);
-        if (!token) {
-            return false;
-        }
-
-        const claim = this.authService.validateToken(token);
+        const claim = this.tokenService.verifyToken(accessToken, 'access');
         if (!claim) {
-            return false;
+            throw new BusinessException(
+                'Invalid access token',
+                'AUTH_FAILED',
+                HttpStatus.UNAUTHORIZED
+            );
         }
 
-        request.user = claim;
+        request.jwtClaim = claim;
         return true;
     }
 }

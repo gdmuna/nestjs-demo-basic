@@ -12,6 +12,7 @@ import { Logger as pinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -21,6 +22,8 @@ async function bootstrap() {
     app.use(helmet());
 
     app.use(compression({ threshold: 1024 }));
+
+    app.use(cookieParser());
 
     const config = new DocumentBuilder()
         .setTitle('Nestjs-Demo-Basic API')

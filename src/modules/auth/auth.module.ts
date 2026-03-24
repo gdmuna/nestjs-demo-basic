@@ -1,6 +1,8 @@
 import { AuthGuard } from './auth.guard.js';
 import { AuthController } from './auth.controller.js';
-import { AuthService } from './auth.service.js';
+import { AuthService, TokenService } from './services/index.js';
+
+import { DatabaseService } from '@/infra/database/database.service.js';
 
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -12,7 +14,9 @@ import { APP_GUARD } from '@nestjs/core';
             provide: APP_GUARD,
             useClass: AuthGuard,
         },
+        DatabaseService,
         AuthService,
+        TokenService,
     ],
 })
 export class AuthModule {}
