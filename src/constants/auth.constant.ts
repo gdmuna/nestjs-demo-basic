@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 const DEFAULT_DEV_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCjFoKfSGfW6yso
 88m22Kq+TOZcLIlrXsXlB+yzeCePeyQql2jJnoNeT5I/ldffosebTwi1+ySBH1e9

@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import _package_info from '@root/package.json' with { type: 'json' };
 
 export const PACKAGE_INFO = _package_info;

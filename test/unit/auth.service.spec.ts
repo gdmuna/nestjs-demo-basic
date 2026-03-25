@@ -1,8 +1,13 @@
+import { loadEnv } from '@/constants/index.js';
+
+import { BusinessException } from '@/common/exceptions/index.js';
+
 import { AuthService } from '@/modules/auth/services/auth.service.js';
+import { TokenService } from '@/modules/auth/services/token.service.js';
 import { LoginDto } from '@/modules/auth/auth.dto.js';
 import bcrypt from 'bcryptjs';
-import { BusinessException } from '@/common/exceptions/index.js';
-import { TokenService } from '@/modules/auth/services/token.service.js';
+
+loadEnv('test', { quiet: true });
 
 describe('AuthService', () => {
     const passwordHash = bcrypt.hashSync('P@ssw0rd!', 10);

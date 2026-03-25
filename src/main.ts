@@ -1,6 +1,6 @@
 import { AppModule } from './app.module.js';
 
-import { APP_VERSION } from '@/constants/index.js';
+import { APP_VERSION, loadEnv } from '@/constants/index.js';
 
 import { Logger } from '@/common/services/index.js';
 
@@ -15,6 +15,8 @@ import { cleanupOpenApiDoc } from 'nestjs-zod';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
+    loadEnv();
+
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
     app.useLogger(app.get(pinoLogger));
     const logger = new Logger('Bootstrap');
@@ -25,13 +27,13 @@ async function bootstrap() {
 
     app.use(cookieParser());
 
-    const config = new DocumentBuilder()
+    const docConfig = new DocumentBuilder()
         .setTitle('Nestjs-Demo-Basic API')
         .setDescription('The API description')
         .setVersion('1.0')
         .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
         .build();
-    const documentFactory = SwaggerModule.createDocument(app, config);
+    const documentFactory = SwaggerModule.createDocument(app, docConfig);
     SwaggerModule.setup('api-doc', app, cleanupOpenApiDoc(documentFactory));
 
     const port = parseInt(process.env.PORT ?? '3000');

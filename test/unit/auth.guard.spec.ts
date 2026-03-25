@@ -1,5 +1,9 @@
 import { AuthGuard } from '@/modules/auth/auth.guard.js';
 
+import { loadEnv } from '@/constants/index.js';
+
+loadEnv('test', { quiet: true });
+
 describe('AuthGuard', () => {
     const reflector = {
         getAllAndOverride: jest.fn(),

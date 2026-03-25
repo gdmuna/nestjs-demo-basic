@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 export const SLOW_REQUEST_THRESHOLDS = {
     warn: Number(process.env.SLOW_REQUEST_WARN_MS ?? 1000),
     error: Number(process.env.SLOW_REQUEST_ERROR_MS ?? 3000),

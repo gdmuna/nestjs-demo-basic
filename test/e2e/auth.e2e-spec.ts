@@ -1,10 +1,13 @@
+import { AppModule } from '@/app.module.js';
+
+import { REFRESH_TOKEN_COOKIE, loadEnv } from '@/constants/index.js';
+
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-
-import { AppModule } from '@/app.module.js';
-import { REFRESH_TOKEN_COOKIE } from '@/constants/auth.constant.js';
 import cookieParser from 'cookie-parser';
+
+loadEnv('test', { quiet: true });
 
 const getCookieByName = (setCookieHeaders: string | string[] | undefined, name: string): string => {
     if (!setCookieHeaders) return '';
