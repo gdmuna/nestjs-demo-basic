@@ -28,6 +28,7 @@
     "pnpm": ">=8.0.0"
   },
   "dependencies": {
+    "@dotenvx/dotenvx-ops": "^0.36.1",
     "@nestjs/common": "^11.1.17",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.17",
@@ -40,7 +41,6 @@
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.3.1",
     "figlet": "^1.11.0",
     "gradient-string": "^3.0.0",
     "helmet": "^8.1.0",

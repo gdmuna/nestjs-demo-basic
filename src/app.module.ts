@@ -16,7 +16,7 @@ import { ErrorCatalogModule, AuthModule } from '@/modules/index.js';
 
 import { envSchema } from '@/common/utils/index.js';
 
-import { IS_DEV, IS_PROD, APP_NAME } from '@/constants/index.js';
+import { IS_DEV, IS_PROD, APP_NAME, loadEnv } from '@/constants/index.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
 
@@ -35,7 +35,14 @@ import pino from 'pino';
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            validate: (config) => envSchema.parse(config),
+            validate: () => {
+                const parsedEnvObj: Record<string, any> = {};
+                loadEnv(process.env.NODE_ENV, {
+                    processEnv: parsedEnvObj,
+                    quiet: true,
+                });
+                return envSchema.parse(parsedEnvObj);
+            },
         }),
         ThrottlerModule.forRoot([
             {
