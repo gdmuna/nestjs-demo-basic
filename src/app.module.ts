@@ -39,14 +39,19 @@ import pino from 'pino';
         }),
         ThrottlerModule.forRoot([
             {
-                name: 'short',
-                ttl: 1000, // 1秒
-                limit: IS_DEV ? Infinity : 3,
+                name: 'global',
+                ttl: 60000, // 1分钟
+                limit: IS_DEV ? 500 : 100,
             },
             {
-                name: 'long',
+                name: 'strict',
                 ttl: 60000, // 1分钟
-                limit: IS_DEV ? Infinity : 100,
+                limit: IS_DEV ? 100 : 20, // 登录、支付等敏感操作
+            },
+            {
+                name: 'public',
+                ttl: 300000, // 5分钟
+                limit: IS_DEV ? Infinity : 1000, // 公开 API，较宽松
             },
         ]),
         LoggerModule.forRoot({

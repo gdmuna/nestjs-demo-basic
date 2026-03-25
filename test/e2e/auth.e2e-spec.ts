@@ -16,8 +16,6 @@ const getCookieByName = (setCookieHeaders: string | string[] | undefined, name: 
     return target.split(';')[0];
 };
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 describe('Auth (e2e)', () => {
     let app: INestApplication;
 
@@ -117,8 +115,6 @@ describe('Auth (e2e)', () => {
             registerRes.headers['set-cookie'],
             REFRESH_TOKEN_COOKIE.NAME
         );
-
-        await sleep(1100);
 
         const [firstRes, secondRes] = await Promise.all([
             request(app.getHttpServer()).post('/auth/refresh-token').set('Cookie', refreshCookie),
