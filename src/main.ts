@@ -13,9 +13,13 @@ import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import cookieParser from 'cookie-parser';
+import { relative } from 'path';
 
 async function bootstrap() {
-    loadEnv();
+    loadEnv(process.env.NODE_ENV);
+    const envFilePath = relative(process.cwd(), `.env.${process.env.NODE_ENV}`);
+    // eslint-disable-next-line no-console
+    console.log('加载环境变量文件：', `\x1b[36m${envFilePath}\x1b[0m`);
 
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
     app.useLogger(app.get(pinoLogger));
@@ -76,7 +80,12 @@ bootstrap()
             font: 'Slant',
             horizontalLayout: 'fitted',
         });
-        process.stdout.write(atlas.multiline(startupBanner + `\nv${APP_VERSION} | by FOV-RGT\n\n`));
+        let signature: string = '';
+        if (APP_VERSION !== 'unknown' && APP_VERSION) {
+            signature += `v${APP_VERSION} | `;
+        }
+        signature += 'by FOV-RGT';
+        process.stdout.write(atlas.multiline(startupBanner + `\n${signature}\n\n`));
     })
     .catch((err) => {
         // eslint-disable-next-line no-console

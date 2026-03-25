@@ -1,4 +1,4 @@
-import { config, DotenvConfigOptions } from '@dotenvx/dotenvx';
+import { config, DotenvConfigOptions } from '@dotenvx/dotenvx-ops';
 import { resolve } from 'path';
 
 /**
