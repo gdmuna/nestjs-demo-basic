@@ -1,55 +1,44 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '@/app.module.js';
+import { AppModule } from './app.module.js';
 
+import { APP_VERSION, loadEnv } from '@/constants/index.js';
+
+import { Logger } from '@/common/services/index.js';
+
+import { NestFactory } from '@nestjs/core';
 import figlet from 'figlet';
 import { atlas } from 'gradient-string';
-
 import compression from 'compression';
-
 import { Logger as pinoLogger } from 'nestjs-pino';
-import { Logger } from '@/common/logger.service.js';
-
 import helmet from 'helmet';
-
-import { APP_VERSION } from '@/utils/constants.js';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { cleanupOpenApiDoc } from 'nestjs-zod';
+import cookieParser from 'cookie-parser';
+import { relative } from 'path';
 
 async function bootstrap() {
+    loadEnv(process.env.NODE_ENV);
+    const envFilePath = relative(process.cwd(), `.env.${process.env.NODE_ENV}`);
+    // eslint-disable-next-line no-console
+    console.log('加载环境变量文件：', `\x1b[36m${envFilePath}\x1b[0m`);
+
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
     app.useLogger(app.get(pinoLogger));
     const logger = new Logger('Bootstrap');
 
     app.use(helmet());
 
-    app.enableCors({
-        origin: (origin: string, callback: any) => {
-            const allowedOrigins =
-                process.env.ALLOWED_ORIGINS_PROD?.split(',')
-                    .map((o) => o.trim())
-                    .filter((o) => o) || [];
-
-            if (
-                process.env.NODE_ENV === 'development' &&
-                typeof process.env.ALLOWED_ORIGINS_DEV === 'string'
-            ) {
-                allowedOrigins.push(
-                    ...process.env.ALLOWED_ORIGINS_DEV.split(',')
-                        .map((o) => o.trim())
-                        .filter((o) => o)
-                );
-            }
-
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        credentials: true,
-        maxAge: 86400,
-    });
-
     app.use(compression({ threshold: 1024 }));
+
+    app.use(cookieParser());
+
+    const docConfig = new DocumentBuilder()
+        .setTitle('Nestjs-Demo-Basic API')
+        .setDescription('The API description')
+        .setVersion('1.0')
+        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+        .build();
+    const documentFactory = SwaggerModule.createDocument(app, docConfig);
+    SwaggerModule.setup('api-doc', app, cleanupOpenApiDoc(documentFactory));
 
     const port = parseInt(process.env.PORT ?? '3000');
     await app.listen(port).catch(async (err) => {
@@ -64,6 +53,15 @@ async function bootstrap() {
 3. 杀死占用端口的进程：
     - （Windows）：taskkill /PID <PID> /F （例：taskkill /PID 36396 /F）
     - （Linux/Mac）：kill -9 <PID> （例：kill -9 36396）\x1b[0m`
+            );
+        } else if (err.code === 'EACCES') {
+            logger.fatal(
+                `❌ 启动失败：没有权限绑定到端口 ${port}。
+\x1b[33m请尝试以下方案：
+1. 以管理员身份运行应用程序
+    - （Windows）：以管理员权限运行 PowerShell，然后执行 pnpm start:dev
+2. 使用更高端口号（1024 以上）：修改 .env 文件设置 PORT=8000
+3. 检查防火墙或安全软件是否阻止\x1b[0m`
             );
         }
         app.flushLogs(); // 打印缓冲日志并分离缓冲区
@@ -82,7 +80,12 @@ bootstrap()
             font: 'Slant',
             horizontalLayout: 'fitted',
         });
-        process.stdout.write(atlas.multiline(startupBanner + `\nv${APP_VERSION} | by FOV-RGT\n\n`));
+        let signature: string = '';
+        if (APP_VERSION !== 'unknown' && APP_VERSION) {
+            signature += `v${APP_VERSION} | `;
+        }
+        signature += 'by FOV-RGT';
+        process.stdout.write(atlas.multiline(startupBanner + `\n${signature}\n\n`));
     })
     .catch((err) => {
         // eslint-disable-next-line no-console

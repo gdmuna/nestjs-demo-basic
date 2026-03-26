@@ -1,20 +1,31 @@
+import { APP_VERSION } from '@/constants/index.js';
+
+import { DatabaseService } from '@/infra/database/database.service.js';
+
+import { Logger, RequestContextService } from '@/common/services/index.js';
+
 import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';
-import { DatabaseService } from '@/common/database.service.js';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@/common/logger.service.js';
-import { APP_VERSION } from '@/utils/constants.js';
 
 @Injectable()
 export class AppService {
     private readonly logger = new Logger(AppService.name);
     constructor(
-        private readonly prisma: DatabaseService,
-        private readonly configService: ConfigService
+        private readonly databaseService: DatabaseService,
+        private readonly configService: ConfigService,
+        private readonly requestContextService: RequestContextService
     ) {}
 
     getHello() {
         this.logger.verbose('Handling getHello request');
+        this.requestContextService.get(); // 确保上下文已初始化
+        this.requestContextService.mergeContextMetadata({
+            exampleKey: '666',
+            ccc: { aaa: 'wtf' },
+        });
+        this.requestContextService.mergeContextMetadata({ exampleKey: 'exampleValue' });
+        this.requestContextService.mergeContextMetadata({ ccc: { bbb: 'omg', aaa: '999' } });
         return 'Hello World!';
     }
 
@@ -38,7 +49,7 @@ export class AppService {
         let timer: NodeJS.Timeout | null = null;
         try {
             await Promise.race([
-                this.prisma.$queryRaw`SELECT 1`,
+                this.databaseService.$queryRaw`SELECT 1`,
                 new Promise(
                     (_, reject) =>
                         (timer = setTimeout(() => reject(new Error('Database timeout')), timeout))

@@ -1,8 +1,16 @@
 import { AppService } from '@/app.service.js';
-import { DatabaseService } from '@/common/database.service.js';
+
+import { loadEnv } from '@/constants/index.js';
+
+import { RequestContextService } from '@/common/services/index.js';
+
+import { DatabaseService } from '@/infra/database/database.service.js';
+
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
+
+loadEnv('test', { quiet: true });
 
 // Mock PinoLogger
 const mockPinoLogger = {
@@ -24,6 +32,7 @@ describe('AppService', () => {
                 AppService,
                 DatabaseService,
                 ConfigService,
+                RequestContextService,
                 {
                     provide: PinoLogger,
                     useValue: mockPinoLogger,

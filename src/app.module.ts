@@ -1,184 +1,64 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { AppController, TestController } from '@/app.controller.js';
-import { AppService } from '@/app.service.js';
-import { DatabaseService } from '@/common/database.service.js';
-import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
-import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter.js';
+import {
+    CorsMiddleware,
+    RequestPreprocessingMiddleware,
+    RequestScopeMiddleware,
+} from './app.middleware.js';
 import {
     PerformanceInterceptor,
-    RequestContextInterceptor,
     ResponseFormatInterceptor,
     TimeoutInterceptor,
-} from '@/common/interceptors/index.js';
+} from './app.interceptor.js';
+import { AppController, TestController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { AllExceptionsFilter } from './app.filter.js';
+
+import { ErrorCatalogModule, AuthModule } from '@/modules/index.js';
+
+import { envSchema } from '@/common/utils/index.js';
+
+import { IS_DEV, IS_PROD, APP_NAME, loadEnv } from '@/constants/index.js';
+
+import { DatabaseService } from '@/infra/database/database.service.js';
+
+import { RequestContextService } from '@/common/services/index.js';
+
+import { Module, MiddlewareConsumer, NestModule, Global } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
-import { IS_DEV, IS_PROD, APP_NAME } from '@/utils/constants.js';
-import { Logger } from '@/common/logger.service.js';
-import { RequestPreprocessingMiddleware } from '@/common/middleware/request-preprocessing.middleware.js';
-import { z } from 'zod/v4';
 
+@Global()
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            validate: (config) => {
-                const envSchema = z.object({
-                    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-                    PORT: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed <= 0 || parsed > 65535) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'valid port number',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .default('3000'),
-                    DB_URL: z.url(),
-                    ALLOWED_ORIGINS_PROD: z
-                        .string()
-                        .transform((val, ctx) => {
-                            val.split(',')
-                                .filter((o) => o)
-                                .forEach((origin) => {
-                                    const ok = z.url().safeParse(origin);
-                                    if (!ok.success) {
-                                        ctx.addIssue({
-                                            code: 'invalid_type',
-                                            expected: 'comma-separated list of valid URLs',
-                                            received: val,
-                                        });
-                                        return z.NEVER;
-                                    }
-                                });
-                            return val;
-                        })
-                        .optional(),
-                    ALLOWED_ORIGINS_DEV: z
-                        .string()
-                        .transform((val, ctx) => {
-                            val.split(',')
-                                .filter((o) => o)
-                                .forEach((origin) => {
-                                    const ok = z.url().safeParse(origin);
-                                    if (!ok.success) {
-                                        ctx.addIssue({
-                                            code: 'invalid_type',
-                                            expected: 'comma-separated list of valid URLs',
-                                            received: val,
-                                        });
-                                        return z.NEVER;
-                                    }
-                                });
-                            return val;
-                        })
-                        .optional(),
-                    LOG_LEVEL: z
-                        .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent', ''])
-                        .optional(),
-                    SLOW_REQUEST_WARN_MS: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed < 0) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'non-negative integer',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .optional(),
-                    SLOW_REQUEST_ERROR_MS: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed < 0) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'non-negative integer',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .optional(),
-                    SLOW_QUERY_WARN_MS: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed < 0) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'non-negative integer',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .optional(),
-                    SLOW_QUERY_ERROR_MS: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed < 0) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'non-negative integer',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .optional(),
-                    REQUEST_TIMEOUT_MS: z
-                        .string()
-                        .transform((val, ctx) => {
-                            if (!val) return val;
-                            const parsed = parseInt(val);
-                            if (isNaN(parsed) || parsed < 0) {
-                                ctx.addIssue({
-                                    code: 'invalid_type',
-                                    expected: 'non-negative integer',
-                                    received: val,
-                                });
-                                return z.NEVER;
-                            }
-                            return String(parsed);
-                        })
-                        .optional(),
+            validate: () => {
+                const parsedEnvObj: Record<string, any> = {};
+                loadEnv(process.env.NODE_ENV, {
+                    processEnv: parsedEnvObj,
+                    quiet: true,
                 });
-                return envSchema.parse(config);
+                return envSchema.parse(parsedEnvObj);
             },
         }),
         ThrottlerModule.forRoot([
             {
-                name: 'short',
-                ttl: 1000, // 1秒
-                limit: IS_DEV ? Infinity : 3,
+                name: 'global',
+                ttl: 60000, // 1分钟
+                limit: IS_DEV ? 500 : 100,
             },
             {
-                name: 'long',
+                name: 'strict',
                 ttl: 60000, // 1分钟
-                limit: IS_DEV ? Infinity : 100,
+                limit: IS_DEV ? 100 : 20, // 登录、支付等敏感操作
+            },
+            {
+                name: 'public',
+                ttl: 300000, // 5分钟
+                limit: IS_DEV ? Infinity : 1000, // 公开 API，较宽松
             },
         ]),
         LoggerModule.forRoot({
@@ -217,24 +97,18 @@ import { z } from 'zod/v4';
                 }),
             ],
         }),
+        ErrorCatalogModule,
+        AuthModule,
     ],
     controllers: [AppController, TestController],
     providers: [
         {
-            provide: APP_FILTER,
-            useClass: AllExceptionsFilter,
-        },
-        {
-            provide: APP_PIPE,
-            useClass: ZodValidationPipe,
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
         },
         {
             provide: APP_INTERCEPTOR,
             useClass: PerformanceInterceptor,
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: RequestContextInterceptor,
         },
         {
             provide: APP_INTERCEPTOR,
@@ -249,16 +123,23 @@ import { z } from 'zod/v4';
             useClass: ZodSerializerInterceptor,
         },
         {
-            provide: APP_GUARD,
-            useClass: ThrottlerGuard,
+            provide: APP_PIPE,
+            useClass: ZodValidationPipe,
         },
         AppService,
         DatabaseService,
-        Logger,
+        RequestContextService,
+        {
+            provide: APP_FILTER,
+            useClass: AllExceptionsFilter,
+        },
     ],
+    exports: [RequestContextService],
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
-        consumer.apply(RequestPreprocessingMiddleware).forRoutes('*');
+        consumer
+            .apply(RequestPreprocessingMiddleware, RequestScopeMiddleware, CorsMiddleware)
+            .forRoutes('*');
     }
 }

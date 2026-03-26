@@ -1,5 +1,5 @@
 # ===== 构建阶段 =====
-FROM node:22-slim AS builder
+FROM node:22.22-slim AS builder
 
 # 安装依赖和 OpenSSL (Prisma 需要)
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -33,7 +33,8 @@ COPY prisma ./prisma
 
 # 数据库URL占位符，你不应在构建镜像时使用真实的数据库URL
 # 但需要一个占位符以便生成Prisma Client，且该占位符所使用的数据库类型应与实际运行时相同
-ARG DB_URL="postgresql://username:password@host:port/dbName?schema=public"
+ARG DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
+ARG SHADOW_DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 
 # 生成 Prisma Client
 RUN pnpm prisma generate
@@ -45,19 +46,21 @@ RUN pnpm build
 RUN pnpm prune --prod --ignore-scripts
 
 # ===== 运行阶段 =====
-FROM node:22-slim
-
-# 安装依赖和 OpenSSL (运行时 Prisma Client 可能需要)
-RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+FROM node:22.22-slim AS runner
 
 # 设置工作目录
 WORKDIR /app
+
+COPY .env.* ./
 
 # 从构建阶段复制依赖
 COPY --from=builder /app/node_modules ./node_modules
 
 # 从构建阶段复制构建输出
 COPY --from=builder /app/dist ./dist
+
+# 安装依赖和 OpenSSL (运行时 Prisma Client 可能需要)
+RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 
 # 构建参数
 ARG APP_VERSION
