@@ -148,3 +148,5 @@ pnpm-lock.yaml
 prisma/generated/
 
 .obsidian
+
+config
