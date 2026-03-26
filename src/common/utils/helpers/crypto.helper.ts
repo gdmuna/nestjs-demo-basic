@@ -84,14 +84,29 @@ export function generateRandomString(
     length: number = 10,
     charset: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 ): string {
-    let result = '';
-    const bytes = randomBytes(length);
+    if (length <= 0) return '';
+    if (charset.length === 0) throw new RangeError('charset must not be empty');
 
-    for (let i = 0; i < length; i++) {
-        result += charset[bytes[i] % charset.length];
+    const charsetLength = charset.length;
+    // 使用 Uint32（4 字节/字符）做拒绝采样：
+    // 拒绝率 = (2^32 % charsetLength) / 2^32，对 62 字符集约为 ~4.7e-8，
+    // 同时支持字符集长度超过 256 的场景（字节方案在此会无限循环）。
+    const UINT32_MAX = 2 ** 32;
+    const max = UINT32_MAX - (UINT32_MAX % charsetLength);
+    const result: string[] = [];
+
+    while (result.length < length) {
+        const needed = length - result.length;
+        const buf = randomBytes(needed * 4 + 64);
+        for (let i = 0; i + 3 < buf.length && result.length < length; i += 4) {
+            const val = buf.readUInt32BE(i);
+            if (val < max) {
+                result.push(charset[val % charsetLength]);
+            }
+        }
     }
 
-    return result;
+    return result.join('');
 }
 
 /**

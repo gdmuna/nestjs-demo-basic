@@ -4,13 +4,13 @@ export const JWT_ACCESS_TOKEN = {
     get PRIVATE_KEY() {
         return (
             process.env.JWT_ACCESS_PRIVATE_KEY ||
-            readFile('config/keys/dev-private.pem').replace(/\\n/g, '\n')
+            readFile('config/keys/jwt-private.pem').replace(/\\n/g, '\n')
         );
     },
     get PUBLIC_KEY() {
         return (
             process.env.JWT_ACCESS_PUBLIC_KEY ||
-            readFile('config/keys/dev-public.pem').replace(/\\n/g, '\n')
+            readFile('config/keys/jwt-public.pem').replace(/\\n/g, '\n')
         );
     },
     get EXPIRES_IN() {
@@ -23,13 +23,13 @@ export const JWT_REFRESH_TOKEN = {
     get PRIVATE_KEY() {
         return (
             process.env.JWT_REFRESH_PRIVATE_KEY ||
-            readFile('config/keys/dev-private.pem').replace(/\\n/g, '\n')
+            readFile('config/keys/jwt-private.pem').replace(/\\n/g, '\n')
         );
     },
     get PUBLIC_KEY() {
         return (
             process.env.JWT_REFRESH_PUBLIC_KEY ||
-            readFile('config/keys/dev-public.pem').replace(/\\n/g, '\n')
+            readFile('config/keys/jwt-public.pem').replace(/\\n/g, '\n')
         );
     },
     get EXPIRES_IN() {

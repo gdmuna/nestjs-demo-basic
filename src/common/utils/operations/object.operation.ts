@@ -102,13 +102,18 @@ export function get<T = any>(
  * set(obj, 'user.profile.name', 'Alice');
  * // obj: { user: { profile: { name: 'Alice' } } }
  */
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function set<T extends Record<string, any>>(obj: T, path: string, value: any): T {
     const keys = path.split('.');
+
+    if (keys.some((k) => UNSAFE_KEYS.has(k))) return obj;
+
     let current: any = obj;
 
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
-        if (!(key in current) || typeof current[key] !== 'object') {
+        if (!Object.hasOwn(current, key) || typeof current[key] !== 'object') {
             current[key] = {};
         }
         current = current[key];
@@ -169,11 +174,13 @@ export function unset<T extends Record<string, any>>(obj: T, path: string): T {
 
     if (keys.length === 0) return obj;
 
+    if (keys.some((k) => UNSAFE_KEYS.has(k))) return obj;
+
     // 找到倒数第二个节点
     let current: any = obj;
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
-        if (!(key in current) || typeof current[key] !== 'object') {
+        if (!Object.hasOwn(current, key) || typeof current[key] !== 'object') {
             // 路径不存在，直接返回
             return obj;
         }
