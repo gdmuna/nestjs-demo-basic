@@ -60,11 +60,10 @@ npx @dotenvx/dotenvx set PORT 3000 --env-file .env.development
 
 或直接在 `.env.keys` 中填入已有私钥，dotenvx 会在应用启动时自动解密对应的 `.env.<NODE_ENV>` 文件。
 
-**4. 初始化数据库**
+**4. 初始化ORM**
 
 ```bash
-pnpm db:migrate      # 生成迁移并同步 schema
-pnpm db:gen-client   # 生成 Prisma Client 类型
+pnpm db:gen-client   # 生成 Prisma Client
 ```
 
 **5. 启动开发服务器**

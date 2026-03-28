@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "db:gen-client": "prisma generate",
-    "db:studio": "prisma studio",
+    "db:studio": "prisma studio -b none",
     "db:pull": "prisma db pull",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

@@ -1,4 +1,4 @@
-import { APP_VERSION } from '@/constants/index.js';
+import { APP_VERSION, IS_DEV } from '@/constants/index.js';
 
 import { Logger, RequestContextService } from '@/common/services/index.js';
 
@@ -97,6 +97,10 @@ export class CorsMiddleware implements NestMiddleware {
     private isOriginAllowed(origin: string | undefined): boolean {
         // 允许没有origin的请求（如移动应用、桌面应用、CURL等）
         if (!origin) {
+            return true;
+        }
+
+        if (IS_DEV) {
             return true;
         }
 
