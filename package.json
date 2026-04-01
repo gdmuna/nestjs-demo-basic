@@ -23,7 +23,8 @@
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "commit": "cz",
+    "env:encrypt": "dotenvx encrypt -f .env.development -f .env.test -f .env.production",
+    "env:decrypt": "dotenvx decrypt -f .env.development -f .env.test -f .env.production",
     "prepare": "husky"
   },
   "keywords": [],
@@ -77,8 +78,6 @@
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
-    "commitizen": "^4.3.1",
-    "cz-conventional-changelog": "^3.3.0",
     "eslint": "~9.39.4",
     "globals": "^17.4.0",
     "husky": "^9.1.7",
@@ -99,10 +98,5 @@
     "**/*.{json,md,css,scss,html,yml,yaml}": [
       "prettier --write"
     ]
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
-    }
   }
 }
