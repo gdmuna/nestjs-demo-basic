@@ -1,0 +1,60 @@
+name: nestjs-demo-basic
+version: '1.0'
+services:
+  # ─────────────────── PostgreSQL ───────────────────
+  postgres:
+    container_name: ${POSTGRES_CONTAINER_NAME:-database}
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nestjs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nestjs_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nestjs_demo}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-nestjs} -d ${POSTGRES_DB:-nestjs_demo}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_network
+
+  # ─────────────────── NestJS App ───────────────────
+  app:
+    container_name: ${APP_CONTAINER_NAME:-backend}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+        APP_NAME: ${APP_NAME:-nestjs-demo-basic}
+        APP_VERSION: ${APP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      # DATABASE_URL 需要指向 Compose 内部服务名，覆盖加密文件中的值
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nestjs}:${POSTGRES_PASSWORD:-nestjs_password}@postgres:5432/${POSTGRES_DB:-nestjs_demo}?schema=public
+    volumes:
+      # .env.keys 提供 dotenvx 解密私钥，其余所有配置由解密后的 .env.{NODE_ENV} 文件注入
+      - type: bind
+        source: ./.env.keys
+        target: /app/.env.keys
+        read_only: true
+    ports:
+      - '${PORT:-3000}:3000'
+    networks:
+      - app_network
+
+volumes:
+  postgres_data:
+
+networks:
+  app_network:
+    driver: bridge

@@ -68,19 +68,17 @@ ARG APP_VERSION
 ARG APP_NAME
 ARG NODE_ENV=production
 ARG GIT_COMMIT=unknown
-ARG PORT=3000
 
 # 环境变量
 ENV APP_VERSION=$APP_VERSION
 ENV APP_NAME=$APP_NAME
 ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=$NODE_ENV
-ENV PORT=$PORT
 
-EXPOSE ${PORT}
+EXPOSE 3000
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl --fail http://localhost:${PORT}/health
+    CMD curl --fail http://localhost:3000/health
 # 启动应用
 CMD ["node", "dist/src/main"]
