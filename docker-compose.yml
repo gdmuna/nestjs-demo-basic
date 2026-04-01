@@ -1,5 +1,5 @@
 name: nestjs-demo-basic
-version: '1.0'
+version: '1.1'
 services:
   # ─────────────────── PostgreSQL ───────────────────
   postgres:
@@ -48,7 +48,7 @@ services:
         target: /app/.env.keys
         read_only: true
     ports:
-      - '${PORT:-3000}:3000'
+      - '${BACKEND_PORT:-3000}:3000'
     networks:
       - app_network
 
