@@ -81,7 +81,7 @@ bootstrap()
         });
         let signature: string = '';
         if (APP_VERSION !== 'unknown' && APP_VERSION) {
-            signature += `v${APP_VERSION} | `;
+            signature += `${APP_VERSION} | `;
         }
         signature += 'by FOV-RGT';
         process.stdout.write(atlas.multiline(startupBanner + `\n${signature}\n\n`));
