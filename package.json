@@ -13,11 +13,10 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "build": "nest build && tsc-alias -v",
-    "start": "cross-env NODE_ENV=development nest start --exec \"pnpm tsc-alias -v && node dist/src/main\"",
-    "start:dev": "cross-env NODE_ENV=development nest start --watch --exec \"pnpm tsc-alias -v && node dist/src/main\"",
-    "start:prod": "cross-env NODE_ENV=production node dist/src/main",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "start:dev": "dotenvx run -f .env.development -- nest start --watch --exec \"pnpm tsc-alias -v && node dist/src/main\"",
+    "start:prod": "pnpm build && dotenvx run -f .env.production -- node dist/src/main",
+    "test": "dotenvx run -f .env.test -- jest",
+    "test:watch": "dotenvx run -f .env.test -- jest --watch",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "lint:staged": "lint-staged",
@@ -30,7 +29,7 @@
   "keywords": [],
   "author": "FOV-RGT",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=8.0.0"
   },
   "dependencies": {
@@ -47,7 +46,6 @@
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
-    "cross-env": "^10.1.0",
     "figlet": "^1.11.0",
     "gradient-string": "^3.0.0",
     "helmet": "^8.1.0",
