@@ -1,7 +1,7 @@
 import { Logger, RequestContextService } from '@/common/services/index.js';
 
 import { PrismaClient } from '@root/prisma/generated/client.js';
-import { AllConfig } from '@root/config/app.config.js';
+import { AllConfig } from '@/constants/index.js';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -91,40 +91,23 @@ export class DatabaseService extends PrismaClient implements OnModuleDestroy, On
     }
 
     // 处理查询事件，检测慢查询并记录日志
-    private handleQueryEvent(event: {
-        timestamp: Date;
-        query: string;
-        params: string;
-        duration: number;
-        target: string;
-    }) {
+    private handleQueryEvent(event: { timestamp: Date; query: string; duration: number }) {
         const requestContext = this.requestContextService.get();
-        const { query, params, target, timestamp } = event;
+        const { timestamp, query } = event;
         const duration = Math.round(event.duration);
-
-        // 解析参数（Prisma 返回的是 JSON 字符串）
-        let parsedParams: any[] = [];
-        try {
-            parsedParams = JSON.parse(params);
-        } catch {
-            parsedParams = params as any;
-        }
 
         // 构造日志上下文
         const logContext = {
             requestId: requestContext?.requestId || 'unknown',
             version: requestContext?.version || 'unknown',
             database: {
-                target, // 例如：prisma:query
+                query: this.formatSql(query),
                 duration,
                 durationUnit: 'ms',
                 timestamp: timestamp.toISOString(),
             },
-            query: {
-                sql: this.formatSql(query),
-                params: this.sanitizeParams(parsedParams),
-            },
         };
+
         const slowQueryThreshold = this.configService.get('observability.slowQueryThreshold', {
             infer: true,
         });
@@ -132,46 +115,18 @@ export class DatabaseService extends PrismaClient implements OnModuleDestroy, On
         // 根据查询耗时选择日志级别
         if (duration >= slowQueryThreshold.error) {
             // 超过 500ms：error 级别
-            this.logger.error(
-                logContext,
-                `Critical slow query (${duration}ms)\n${this.formatSql(query)}`
-            );
+            this.logger.error(logContext, `Critical slow query (${duration}ms)`);
         } else if (duration >= slowQueryThreshold.warn) {
             // 超过 100ms：warn 级别
-            this.logger.warn(logContext, `Slow query (${duration}ms)\n${this.formatSql(query)}`);
+            this.logger.warn(logContext, `Slow query (${duration}ms)`);
         } else {
             // 所有查询：debug 级别
             this.logger.debug(logContext, `Query executed (${duration}ms)`);
         }
     }
 
-    // 格式化 SQL 语句
     private formatSql(sql: string): string {
-        return sql
-            .split('\n') // 按行分割
-            .map((line) => line.trim()) // 每行去掉首尾空格
-            .filter((line) => line.length > 0) // 去掉空行
-            .join('\n'); // 重新组合
-    }
-    // 脱敏查询参数（避免记录敏感信息）
-    private sanitizeParams(params: any[]): any[] {
-        if (!params || params.length === 0) return [];
-
-        return params.map((param) => {
-            if (typeof param === 'string') {
-                // 检测是否为敏感字段（密码、token 等）
-                if (
-                    param.toLowerCase().includes('password') ||
-                    param.toLowerCase().includes('token') ||
-                    param.toLowerCase().includes('secret')
-                ) {
-                    return '[REDACTED]';
-                }
-                // 限制字符串长度
-                return param.length > 100 ? param.substring(0, 100) + '...' : param;
-            }
-            return param;
-        });
+        return sql.replace(/"([^"]+)"/g, '$1');
     }
 
     async onModuleDestroy() {

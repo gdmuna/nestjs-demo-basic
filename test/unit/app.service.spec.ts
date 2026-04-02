@@ -1,17 +1,14 @@
 import { AppService } from '@/app.service.js';
 
-import { loadEnv } from '@/common/utils/index.js';
-
-import { RequestContextService } from '@/common/services/index.js';
+import allConfig from '@/constants/index.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
+
+import { RequestContextService } from '@/common/services/index.js';
 
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
-import allConfig from '@root/config/app.config.js';
-
-loadEnv('test', { quiet: true });
 
 // Mock PinoLogger
 const mockPinoLogger = {

@@ -1,6 +1,6 @@
 import { ErrorCatalogService } from './error-catalog.service.js';
 
-import { ERROR_CATALOG } from '@/constants/error-catalog.constant.js';
+import { ERROR_CATALOG } from '@/constants/error.constant.js';
 
 import { Public } from '@/common/decorators/index.js';
 

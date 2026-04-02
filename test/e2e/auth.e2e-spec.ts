@@ -1,15 +1,11 @@
 import { AppModule } from '@/app.module.js';
 
-import { loadEnv } from '@/common/utils/index.js';
-
-import { REFRESH_TOKEN_COOKIE } from '@root/config/app.config.js';
+import { REFRESH_TOKEN_COOKIE } from '@/constants/index.js';
 
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import cookieParser from 'cookie-parser';
-
-loadEnv('test', { quiet: true });
 
 const getCookieByName = (setCookieHeaders: string | string[] | undefined, name: string): string => {
     if (!setCookieHeaders) return '';

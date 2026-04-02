@@ -18,7 +18,7 @@ import { DatabaseService } from '@/infra/database/database.service.js';
 
 import { RequestContextService } from '@/common/services/index.js';
 
-import allConfig, { AllConfig } from '@root/config/app.config.js';
+import allConfig, { AllConfig } from '@/constants/index.js';
 
 import { Module, MiddlewareConsumer, NestModule, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';

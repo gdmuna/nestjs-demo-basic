@@ -1,6 +1,6 @@
 import { Logger, RequestContextService } from '@/common/services/index.js';
 
-import { AllConfig } from '@root/config/app.config.js';
+import { AllConfig } from '@/constants/index.js';
 
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

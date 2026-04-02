@@ -1,8 +1,8 @@
 import type { ErrorCode } from './error-catalog.type.js';
 
-import { ERROR_CATALOG } from '@/constants/error-catalog.constant.js';
+import { ERROR_CATALOG } from '@/constants/error.constant.js';
 
-import { AllConfig } from '@root/config/app.config.js';
+import { AllConfig } from '@/constants/index.js';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

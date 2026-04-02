@@ -1,13 +1,9 @@
 import { AuthController } from '@/modules/auth/auth.controller.js';
 import { AuthService } from '@/modules/auth/services/auth.service.js';
 
-import { loadEnv } from '@/common/utils/index.js';
-
-import { REFRESH_TOKEN_COOKIE } from '@root/config/app.config.js';
+import { REFRESH_TOKEN_COOKIE } from '@/constants/index.js';
 
 import { RequestContextService } from '@/common/services/request-context.service.js';
-
-loadEnv('test', { quiet: true });
 
 const mockAuthService = {
     register: jest.fn(),

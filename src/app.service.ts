@@ -5,7 +5,7 @@ import { Logger, RequestContextService } from '@/common/services/index.js';
 import { Injectable } from '@nestjs/common';
 import { uptime } from 'node:process';
 import { ConfigService } from '@nestjs/config';
-import { AllConfig } from '@root/config/app.config.js';
+import { AllConfig } from '@/constants/index.js';
 
 @Injectable()
 export class AppService {

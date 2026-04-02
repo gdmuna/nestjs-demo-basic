@@ -1,4 +1,4 @@
-import { APP_VERSION } from '@root/config/app.config.js';
+import { APP_VERSION } from '@/constants/index.js';
 
 import { AppModule } from './app.module.js';
 
@@ -7,26 +7,18 @@ import { Logger } from '@/common/services/index.js';
 import { NestFactory } from '@nestjs/core';
 import figlet from 'figlet';
 import { atlas } from 'gradient-string';
-import compression from 'compression';
 import { Logger as pinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import cookieParser from 'cookie-parser';
-import { relative } from 'path';
 
 async function bootstrap() {
-    const envFilePath = relative(process.cwd(), `.env.${process.env.NODE_ENV}`);
-    // eslint-disable-next-line no-console
-    console.log('加载环境变量文件：', `\x1b[36m${envFilePath}\x1b[0m`);
-
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
     app.useLogger(app.get(pinoLogger));
     const logger = new Logger('Bootstrap');
 
     app.use(helmet());
-
-    app.use(compression({ threshold: 1024 }));
 
     app.use(cookieParser());
 
@@ -75,16 +67,34 @@ bootstrap()
     .then(async () => {
         // 等待 pino-pretty Worker 线程完成日志输出
         await new Promise((resolve) => setTimeout(resolve, 200));
+
         const startupBanner = await figlet.text('NestJS-Demo-Basic', {
             font: 'Slant',
             horizontalLayout: 'fitted',
         });
-        let signature: string = '';
-        if (APP_VERSION !== 'unknown' && APP_VERSION) {
-            signature += `${APP_VERSION} | `;
+
+        const infoArray = [];
+
+        infoArray.push(`Version: ${APP_VERSION}`);
+
+        infoArray.push(`Environment: ${process.env.NODE_ENV || 'N/A'}`);
+
+        let info = infoArray.join(' | ');
+
+        const signature = 'By Maiturin';
+
+        const bannerWidth = Math.max(...startupBanner.split('\n').map((line) => line.length));
+        const MIN_GAP = 4;
+        const lineWidth = Math.max(bannerWidth, info.length + signature.length + MIN_GAP);
+        const padspace = lineWidth - info.length;
+
+        if (lineWidth > bannerWidth) {
+            info = infoArray.join('\n') + `\n${signature}`;
+        } else {
+            info = info + signature.padStart(padspace);
         }
-        signature += 'by FOV-RGT';
-        process.stdout.write(atlas.multiline(startupBanner + `\n${signature}\n\n`));
+
+        process.stdout.write(atlas.multiline(startupBanner + `\n${info}\n\n`));
     })
     .catch((err) => {
         // eslint-disable-next-line no-console
