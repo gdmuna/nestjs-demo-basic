@@ -2,10 +2,12 @@
 FROM node:22.22-slim AS builder
 
 # 安装依赖和 OpenSSL (Prisma 需要)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-
-# 安装 pnpm
-RUN npm install -g pnpm
+RUN <<EOF
+apt-get update -y
+apt-get install -y openssl
+rm -rf /var/lib/apt/lists/*
+npm install -g pnpm
+EOF
 
 # 设置工作目录
 WORKDIR /app
@@ -37,14 +39,11 @@ COPY config ./config
 ARG DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 ARG SHADOW_DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 
-# 生成 Prisma Client
-RUN pnpm prisma generate
-
-# 构建项目
-RUN pnpm build
-
-# 清理 devDependencies 以减小镜像大小
-RUN pnpm prune --prod --ignore-scripts
+RUN <<EOF
+pnpm prisma generate
+pnpm build
+pnpm prune --prod --ignore-scripts
+EOF
 
 # ===== 运行阶段 =====
 FROM node:22.22-slim AS runner
@@ -61,24 +60,29 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # 安装依赖和 OpenSSL (运行时 Prisma Client 可能需要)
-RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+RUN <<EOF
+apt-get update -y
+apt-get install -y openssl curl
+curl -sfS https://dotenvx.sh/install.sh | sh
+rm -rf /var/lib/apt/lists/*
+EOF
 
 # 构建参数
 ARG APP_VERSION
 ARG APP_NAME
-ARG NODE_ENV=production
-ARG GIT_COMMIT=unknown
+ARG GIT_COMMIT
 
 # 环境变量
 ENV APP_VERSION=$APP_VERSION
 ENV APP_NAME=$APP_NAME
 ENV GIT_COMMIT=$GIT_COMMIT
-ENV NODE_ENV=$NODE_ENV
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
     CMD curl --fail http://localhost:3000/health
+
 # 启动应用
-CMD ["node", "dist/src/main"]
+CMD ["sh", "-c", "exec dotenvx run -f .env.${NODE_ENV} -- node dist/src/main.js"]
