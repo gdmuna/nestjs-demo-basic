@@ -20,7 +20,7 @@ export interface StaticMeta<TCode extends string = string> {
     message: string;
     description: string;
     retryable: boolean;
-    logLevel: 'info' | 'warn' | 'error' | 'fatal';
+    logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
     docsPath?: string;
     detailsSchema?: Record<string, unknown>;
 }

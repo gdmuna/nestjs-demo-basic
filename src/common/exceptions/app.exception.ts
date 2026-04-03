@@ -11,10 +11,12 @@ import { HttpException } from '@nestjs/common';
 export interface RuntimeContext<TDetails = unknown> {
     /** 本次异常的具体数据（如字段错误列表、冲突资源信息） */
     details?: TDetails;
-    /** 原始底层错误，通过 Error.cause 链传递，不出现在 HTTP 响应体中 */
-    cause?: Error | unknown;
     /** 动态覆盖 StaticMeta.message（可选，优先级高于装饰器中的默认消息） */
     message?: string;
+    /** 原始底层错误，通过 Error.cause 链传递，不出现在 HTTP 响应体中 */
+    cause?: unknown;
+    /** 动态覆盖 StaticMeta.description（可选，优先级高于装饰器中的默认描述） */
+    causeDescription?: string;
     /** 限流/背压场景：客户端应等待的毫秒数，写入响应头 Retry-After */
     retryAfterMs?: number;
     /**
@@ -47,7 +49,7 @@ export abstract class AppException<TDetails = unknown> extends HttpException {
     readonly retryAfterMs?: number;
     readonly details?: TDetails;
 
-    constructor(context: RuntimeContext<TDetails> = {}, options?: ErrorOptions) {
+    constructor(context: RuntimeContext<TDetails> = {}) {
         const meta: StaticMeta | undefined = Reflect.getMetadata(EXCEPTION_META_KEY, new.target);
         if (!meta) {
             throw new Error(
@@ -64,23 +66,11 @@ export abstract class AppException<TDetails = unknown> extends HttpException {
                 timestamp: new Date().toISOString(),
             },
             context.statusCode ?? meta.statusCode,
-            { cause: context.cause, ...options }
+            {
+                cause: context.cause,
+                description: context.causeDescription,
+            }
         );
-
-        // 运行时覆盖字段（statusCode / logLevel）的访问控制：
-        // 仅 SystemException 子类（框架级包装类）允许使用，业务异常若误传则快速失败。
-        // 注意：此处向后引用同文件中的 SystemException 是合法的——
-        //   TypeScript 对函数体内的引用做全文件作用域分析；
-        //   运行时构造函数被调用时模块已完成初始化，不存在 TDZ 问题。
-        if (
-            (context.statusCode !== undefined || context.logLevel !== undefined) &&
-            !(this instanceof SystemException)
-        ) {
-            throw new Error(
-                `RuntimeContext.statusCode / logLevel 运行时覆盖字段仅供 SystemException ` +
-                    `子类使用，${this.constructor.name} 不属于 SystemException 继承分支。`
-            );
-        }
 
         this.code = meta.code;
         this.logLevel = context.logLevel ?? meta.logLevel;
