@@ -5,6 +5,12 @@ import { z } from 'zod/v4';
 
 // app
 
+const _allowedEnvValue = ['development', 'test', 'production'] as const;
+
+export const NODE_ENV = _allowedEnvValue.includes(process.env.NODE_ENV as any)
+    ? (process.env.NODE_ENV as (typeof _allowedEnvValue)[number])
+    : 'development';
+
 export const PORT = process.env.PORT;
 
 export const PACKAGE_INFO = _package_info;
@@ -12,6 +18,8 @@ export const PACKAGE_INFO = _package_info;
 export const APP_VERSION = process.env.APP_VERSION || PACKAGE_INFO.version || 'unknown';
 
 export const APP_NAME = process.env.APP_NAME || PACKAGE_INFO.name || 'unknown';
+
+export const APP_AUTHOR = process.env.APP_AUTHOR || PACKAGE_INFO.author || 'unknown';
 
 export const GIT_COMMIT = process.env.GIT_COMMIT || 'N/A';
 
@@ -33,7 +41,15 @@ const AppConfigValidateSchema = z
             (v) => v || undefined,
             z.string().default(PACKAGE_INFO.version || 'N/A')
         ),
-        GIT_COMMIT: z.preprocess((v) => v || undefined, z.string().default('N/A')),
+        APP_AUTHOR: z.preprocess(
+            (v) => v || undefined,
+            z.string().default(PACKAGE_INFO.author || 'N/A')
+        ),
+        // prettier-ignore
+        GIT_COMMIT: z.preprocess(
+            (v) => v || undefined,
+            z.string().default('N/A')
+        ),
     })
     .transform((env) => ({
         nodeEnv: env.NODE_ENV,

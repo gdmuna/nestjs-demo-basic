@@ -1,4 +1,4 @@
-import { APP_VERSION } from '@/constants/index.js';
+import { APP_VERSION, APP_AUTHOR } from '@/constants/index.js';
 
 import { AppModule } from './app.module.js';
 
@@ -81,7 +81,7 @@ bootstrap()
 
         let info = infoArray.join(' | ');
 
-        const signature = 'By Maiturin';
+        const signature = `By ${APP_AUTHOR}`;
 
         const bannerWidth = Math.max(...startupBanner.split('\n').map((line) => line.length));
         const MIN_GAP = 4;
