@@ -9,7 +9,8 @@ import {
 } from '@/common/exceptions/index.js';
 import { Logger } from '@/common/services/index.js';
 
-import { API_DOCS_BASE_URL } from '@/constants/index.js';
+import { ERROR_REFERENCE_URL } from '@/constants/index.js';
+import { toKebabCase } from '@/common/utils/index.js';
 
 import { AlsService } from '@/infra/als/als.service.js';
 
@@ -71,7 +72,7 @@ abstract class BaseExceptionFilter implements ExceptionFilter {
         // prettier-ignore
         const docsUrl =
             ErrorRegistry.get(exception.code)?.docsPath
-            ?? `${API_DOCS_BASE_URL}/${exception.code}`;
+            ?? `${ERROR_REFERENCE_URL}#${toKebabCase(exception.code)}`;
 
         if (exception.retryAfterMs !== undefined) {
             response.setHeader('Retry-After', Math.ceil(exception.retryAfterMs / 1000));

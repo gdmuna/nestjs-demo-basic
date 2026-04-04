@@ -23,6 +23,14 @@ export const SLOW_QUERY_THRESHOLD = {
 
 export const API_DOCS_BASE_URL = process.env.API_DOCS_BASE_URL || 'https://api.example.com/errors';
 
+/**
+ * VitePress 错误码参考文档页面 URL。
+ * `type` 字段将在此 URL 后拼接错误码锚点（如 `#db-record-not-found`）。
+ * 生产环境设置为实际文档站点地址，开发环境默认指向本地 VitePress。
+ */
+export const ERROR_REFERENCE_URL =
+    process.env.ERROR_REFERENCE_URL || 'http://localhost:5173/03-reference/error-reference';
+
 const ObservabilityConfigValidateSchema = z
     .object({
         SLOW_REQUEST_WARN_MS: z.coerce.number().default(1000),

@@ -10,9 +10,11 @@ import { AppException } from './app.exception.js';
  * - description 面向开发者的详细说明，出现在 GET /errors/:code 文档页
  * - retryable   客户端是否可以重试（true = 临时性故障）
  * - logLevel    Filter 记录日志时使用的级别，由异常类自身声明，消除 if-else 链
- * - docsPath    覆盖默认文档 URL（可选，默认 {API_DOCS_BASE_URL}/errors/{code}）
+ * - docsPath    覆盖默认文档 URL（可选，默认 {API_DOCS_BASE_URL}/{code}）
  * - detailsSchema details 字段的 OpenAPI JSON Schema（可选）
  *               填写后，enricher 自动补全 Swagger 文档，/errors/:code 端点也将返回此字段
+ * - hint         排查 / 解决建议（面向开发者），出现在错误码参考文档中
+ * - causes       常见触发原因列表，出现在错误码参考文档中
  */
 export interface StaticMeta<TCode extends string = string> {
     code: TCode;
@@ -23,6 +25,10 @@ export interface StaticMeta<TCode extends string = string> {
     logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
     docsPath?: string;
     detailsSchema?: Record<string, unknown>;
+    /** 排查 / 解决建议（面向开发者），出现在错误码参考文档中 */
+    hint?: string;
+    /** 常见触发原因列表，出现在错误码参考文档中 */
+    causes?: string[];
 }
 
 const _registry = new Map<string, StaticMeta>();

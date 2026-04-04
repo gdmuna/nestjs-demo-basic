@@ -1,5 +1,7 @@
 import { AppService } from './app.service.js';
 
+import { ChangeLoggerLevelDto } from './app.dto.js';
+
 import { DatabaseService } from '@/infra/database/database.service.js';
 
 import { ApiRoute } from '@/common/decorators/index.js';
@@ -31,9 +33,9 @@ export class AppController {
         summary: '动态调整日志级别',
         description: '通过此接口可以在运行时动态调整日志记录器的级别，适用于测试或调试场景。',
     })
-    changeLoggerLevel(@Body('level') level: string) {
-        PinoLogger.root.level = level;
-        const message = `Logger level changed to [${level}]`;
+    changeLoggerLevel(@Body() body: ChangeLoggerLevelDto) {
+        PinoLogger.root.level = body.level;
+        const message = `Logger level changed to [${body.level}]`;
         this.logger.info(message);
         return message;
     }
@@ -61,16 +63,16 @@ export class TestController {
     @ApiRoute({
         auth: 'required',
         summary: '模拟错误',
-        description: '此接口会抛出一个模拟的 HTTP 500 错误，用于测试全局异常过滤器的功能。',
+        description: '此接口会抛出一个模拟的 HTTP 418 错误，用于测试全局异常过滤器的功能。',
     })
     simulateError() {
         throw new HttpException(
             {
-                message: 'Simula Internal Exception',
-                code: 'Simula_Internal_Exception',
+                message: 'I am a teapot - This is a simulated error for testing purposes.',
+                code: 'I_AM_A_TEAPOT',
                 timestamp: new Date().toISOString(),
             },
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.I_AM_A_TEAPOT
         );
     }
 

@@ -5,7 +5,9 @@ import { IS_DEV } from '@/constants/index.js';
 import { Injectable } from '@nestjs/common';
 import { Logger as NestLogger } from '@nestjs/common';
 
-type LEVELS = 'verbose' | 'debug' | 'log' | 'warn' | 'error' | 'fatal';
+export const LOG_LEVEL_ENUM = ['verbose', 'debug', 'log', 'warn', 'error', 'fatal'] as const;
+
+export type LOG_LEVEL_ENUM_TYPE = (typeof LOG_LEVEL_ENUM)[number];
 
 /**
  * @description 自定义 Logger 服务，增强日志功能
@@ -20,7 +22,7 @@ export class Logger extends NestLogger {
     constructor(context: string) {
         super(context);
     }
-    private _logger(level: LEVELS, message: any, context?: string) {
+    private _logger(level: LOG_LEVEL_ENUM_TYPE, message: any, context?: string) {
         try {
             switch (level) {
                 case 'verbose':

@@ -31,14 +31,6 @@ import pino from 'pino';
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            // validate: () => {
-            //     const parsedEnvObj: Record<string, any> = {};
-            //     loadEnv(process.env.NODE_ENV, {
-            //         processEnv: parsedEnvObj,
-            //         quiet: true,
-            //     });
-            //     return envSchema.parse(parsedEnvObj);
-            // },
             load: allConfig,
         }),
         ThrottlerModule.forRootAsync({
@@ -47,19 +39,8 @@ import pino from 'pino';
                 const { isDev } = configService.get('app', { infer: true });
                 return [
                     {
-                        name: 'global',
-                        ttl: 60000, // 1分钟
-                        limit: isDev ? 500 : 100,
-                    },
-                    {
-                        name: 'strict',
-                        ttl: 60000, // 1分钟
-                        limit: isDev ? 100 : 20, // 登录、支付等敏感操作
-                    },
-                    {
-                        name: 'public',
                         ttl: 300000, // 5分钟
-                        limit: isDev ? Infinity : 1000, // 公开 API，较宽松
+                        limit: isDev ? Infinity : 1000,
                     },
                 ];
             },
@@ -88,13 +69,6 @@ import pino from 'pino';
                                 err: () => undefined, // 错误堆栈交由 exceptions.filter 处理，避免重复记录
                                 req: () => undefined, // 请求信息交由 performance.interceptor 处理，避免重复记录
                             },
-                            // prettier-ignore
-                            // 全局隐藏敏感信息
-                            redact:
-                            !isDev ? {
-                                paths: ['*.headers.authorization'],
-                                censor: '[REDACTED]',
-                            } : undefined,
                             autoLogging: false,
                         },
                         pino.destination({

@@ -5,15 +5,14 @@ import {
     SystemExceptionCode,
     ClientExceptionCode,
 } from '@/common/exceptions/index.js';
+import { toKebabCase } from '@/common/utils/index.js';
 
-import { API_DOCS_BASE_URL, APP_VERSION } from '@/constants/index.js';
+import { APP_VERSION, ERROR_REFERENCE_URL } from '@/constants/index.js';
 
 import { applyDecorators, Type } from '@nestjs/common';
 import { SetMetadata } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { ulid } from 'ulid';
-
-// ─── 元数据键 ─────────────────────────────────────────────────────────────────
 
 /** 认证策略的元数据键，供 AuthGuard 读取 */
 export const AUTH_STRATEGY_KEY = 'auth:strategy';
@@ -21,7 +20,11 @@ export const AUTH_STRATEGY_KEY = 'auth:strategy';
 /** 认证策略类型枚举 */
 export type AUTH_STRATEGY_TYPE = 'public' | 'optional' | 'required';
 
-/** 路由错误码声明列表的元数据键，供 OpenAPI 富化器读取 */
+/**
+ * 路由错误码声明列表的元数据键。
+ * 当前由 `buildErrorApiResponses` 在装饰器阶段内联生成 ApiResponse，
+ * `enrichErrorResponses` 文档后处理阶段补充 schema 定义。
+ */
 export const ROUTE_ERRORS_KEY = 'route:errors';
 
 /**
@@ -29,11 +32,6 @@ export const ROUTE_ERRORS_KEY = 'route:errors';
  * 对应类在 @/common/exceptions/client.exception.ts 与 system.exception.ts 中注册，
  * 随 ErrorRegistry 导入自动就位。
  */
-// const BASE_ERROR_CODES = [
-//     'CLIENT_REQUEST_RATE_LIMIT_EXCEEDED', // 429
-//     'SYS_UNEXPECTED_ERROR', // 500
-// ] as const;
-
 const BASE_ERROR_CODES = [
     ...Object.values(ClientExceptionCode),
     ...Object.values(SystemExceptionCode),
@@ -42,18 +40,27 @@ const BASE_ERROR_CODES = [
 export interface ApiRouteOptions {
     /** 认证策略（默认 'required'） */
     auth: AUTH_STRATEGY_TYPE;
+
     /** Swagger 操作摘要（必填），显示在端点标题 */
     summary: string;
+
     /** 接口详细说明，支持 Markdown */
     description?: string;
+
     /**
-     * 成功响应的 DTO 类型。
+     * 成功响应类型，支持两种形式：
+     * - DTO 类（`createZodDto` 产物）：适用于 object 类型响应
+     * - 原始 OpenAPI schema 对象：适用于 primitive 类型（string、number、boolean 等），
+     *   例如 `{ type: 'string', example: 'ok' }`
+     *
      * 装饰器将自动包裹入 ResponseFormatInterceptor 的统一包络：
      * `{ success: true, data: <responseType>, timestamp, context }`
      */
-    responseType?: Type<unknown>;
+    responseType?: Type<unknown> | Record<string, unknown>;
+
     /** 成功响应的 HTTP 状态码（默认 200） */
     successStatus?: number;
+
     /**
      * 该路由可能抛出的业务错误码列表（ErrorRegistry 中已注册的 code 字符串）。
      *
@@ -65,6 +72,10 @@ export interface ApiRouteOptions {
      * 由各路由按需在此处手动声明，确保与异常注册加载顺序解耦。
      */
     errors?: string[];
+
+    /** 该路由接受的 Content-Type 列表（默认 [application/json, application/x-www-form-urlencoded]）*/
+    consumes?: string[];
+
     /** 标记为已废弃接口 */
     deprecated?: boolean;
 }
@@ -102,10 +113,15 @@ export const ApiRoute = (options: ApiRouteOptions) => {
         ...new Set([...(options.errors ?? []), ...BASE_ERROR_CODES, ...EXTERNAL_ERROR_CODES]),
     ];
 
+    const allowedContentTypes = options.consumes ?? [
+        'application/json',
+        'application/x-www-form-urlencoded',
+    ];
+
     return applyDecorators(
         // 1. 认证元数据
         SetMetadata(AUTH_STRATEGY_KEY, auth),
-        // 2. 错误码元数据（供富化器消费）
+        // 2. 错误码元数据（供调试 / 运行时反射读取）
         SetMetadata(ROUTE_ERRORS_KEY, allErrorCodes),
         // 3. Swagger 操作说明
         ApiOperation({
@@ -113,6 +129,7 @@ export const ApiRoute = (options: ApiRouteOptions) => {
             description: options.description,
             deprecated: options.deprecated,
         }),
+        ApiConsumes(...allowedContentTypes),
         // 4. 成功响应包络（有 responseType 时展开）
         ...(options.responseType
             ? [buildSuccessApiResponse(options.responseType, options.successStatus ?? 200)]
@@ -126,10 +143,19 @@ export const ApiRoute = (options: ApiRouteOptions) => {
 
 /**
  * 构造成功响应 ApiResponse 装饰器。
- * 包络结构由 wrapSuccessResponses 文档后处理统一注入，此处只声明裸 DTO 类型。
+ * 包络结构由 wrapSuccessResponses 文档后处理统一注入，此处只声明裸数据类型。
+ *
+ * - DTO 类 → 使用 `type: dto`（@nestjs/swagger 通过反射读取 schema）
+ * - 原始 schema 对象 → 使用 `schema`（直接嵌入，适用于 string/number/boolean 等 primitive）
  */
-function buildSuccessApiResponse(dto: Type<unknown>, status: number) {
-    return ApiResponse({ status, type: dto, description: '操作成功' });
+function buildSuccessApiResponse(
+    responseType: Type<unknown> | Record<string, unknown>,
+    status: number
+) {
+    if (typeof responseType === 'function') {
+        return ApiResponse({ status, type: responseType, description: '操作成功' });
+    }
+    return ApiResponse({ status, schema: responseType, description: '操作成功' });
 }
 
 /**
@@ -166,7 +192,7 @@ function buildErrorApiResponses(codes: readonly string[]) {
                                     success: false,
                                     code,
                                     message,
-                                    type: `${API_DOCS_BASE_URL}/${code}`,
+                                    type: `${ERROR_REFERENCE_URL}#${toKebabCase(code)}`,
                                     timestamp: new Date().toISOString(),
                                     context: {
                                         requestId: ulid(),

@@ -4,16 +4,16 @@ import { z } from 'zod/v4';
 const RegisterDtoSchema = z
     .object({
         username: z.string().min(3).max(32).meta({
-            description: '用户名',
-            example: 'john_doe',
+            title: '用户名',
+            example: 'user0',
         }),
         email: z.email().meta({
-            description: '邮箱',
-            example: 'john@example.com',
+            title: '邮箱',
+            example: 'user0@example.com',
         }),
         password: z.string().min(8).max(128).meta({
-            description: '密码',
-            example: 'P@ssw0rd!',
+            title: '密码',
+            example: 'password',
         }),
     })
     .meta({ description: '注册请求体' });
@@ -23,12 +23,12 @@ export class RegisterDto extends createZodDto(RegisterDtoSchema) {}
 const LoginDtoSchema = z
     .object({
         account: z.string().min(1).max(128).meta({
-            description: '用户名或邮箱',
-            example: 'john_doe',
+            title: '用户名或邮箱',
+            example: 'user0',
         }),
         password: z.string().min(8).max(128).meta({
-            description: '密码',
-            example: 'P@ssw0rd!',
+            title: '密码',
+            example: 'password',
         }),
     })
     .meta({ description: '登录请求体' });
@@ -38,8 +38,9 @@ export class LoginDto extends createZodDto(LoginDtoSchema) {}
 const AccessTokenDtoSchema = z
     .object({
         accessToken: z.string().min(1).meta({
-            description: '访问令牌',
-            example: 'eyJhbGciOi...',
+            title: '访问令牌',
+            example:
+                'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMUtOOUMyWEY5RUpIVjNQMENBWTNOWFNNWSIsImp0aSI6IjAxS05DTVE0N1I4R0c4V1kxQkQ3TTNKOU1SIiwidG9rZW5UeXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc1MzE5NjE3LCJleHAiOjE3NzUzMjA1MTd9.gsIPwms-A7njDj7dS3qai6i8AXs5Tet-z_ibW8iFs6r3tnDSx8YlKRe1UWMSsOxYqMtsxnrmY-LwuSEGZybeFA',
         }),
     })
     .meta({ description: '访问令牌响应体' });
@@ -49,25 +50,26 @@ export class AccessTokenDto extends createZodDto(AccessTokenDtoSchema) {}
 const AuthUserDtoSchema = z
     .object({
         id: z.string().meta({
-            description: '用户 ID',
-            example: 'cm01abcxyz',
+            title: '用户 ID',
+            example: '01KN9C2XF9EJHV3P0CAY3NXSMY',
         }),
         username: z.string().meta({
-            description: '用户名',
-            example: 'john_doe',
+            title: '用户名',
+            example: 'user0',
         }),
         email: z.email().meta({
-            description: '邮箱',
-            example: 'john@example.com',
+            title: '邮箱',
+            example: 'user0@example.com',
         }),
     })
-    .meta({ description: '认证用户信息' });
+    .meta({ title: '认证用户信息' });
 
 const AuthResponseDtoSchema = z
     .object({
         accessToken: z.string().min(1).meta({
-            description: '访问令牌',
-            example: 'eyJhbGciOi...',
+            title: '访问令牌',
+            example:
+                'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMUtOOUMyWEY5RUpIVjNQMENBWTNOWFNNWSIsImp0aSI6IjAxS05DTVE0N1I4R0c4V1kxQkQ3TTNKOU1SIiwidG9rZW5UeXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc1MzE5NjE3LCJleHAiOjE3NzUzMjA1MTd9.gsIPwms-A7njDj7dS3qai6i8AXs5Tet-z_ibW8iFs6r3tnDSx8YlKRe1UWMSsOxYqMtsxnrmY-LwuSEGZybeFA',
         }),
         user: AuthUserDtoSchema,
     })

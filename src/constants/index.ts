@@ -25,4 +25,3 @@ export * from './app.constant.js';
 export * from './auth.constant.js';
 export * from './database.constant.js';
 export * from './observability.constant.js';
-export * from './error.constant.js';
