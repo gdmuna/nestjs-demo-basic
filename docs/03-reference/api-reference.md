@@ -123,7 +123,7 @@ GET /errors
 
 ## GET ErrorCatalogController_getErrorDetail
 
-GET /errors/{errorCode}
+GET /errors/\{errorCode\}
 
 ### 请求参数
 
