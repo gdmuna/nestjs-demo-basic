@@ -84,10 +84,12 @@ jobs:
         run: |
           npm install -g pnpm
           pnpm install --frozen-lockfile --ignore-scripts
+          PGPASSWORD=cd_export_pass psql -h localhost -U cd_export -d postgres \
+            -c "CREATE DATABASE nestjs_cd_export_shadow;"
           pnpm prisma migrate deploy
         env:
           DATABASE_URL: postgresql://cd_export:cd_export_pass@localhost:5432/nestjs_cd_export?schema=public
-          SHADOW_DATABASE_URL: postgresql://cd_export:cd_export_pass@localhost:5432/nestjs_cd_export?schema=public
+          SHADOW_DATABASE_URL: postgresql://cd_export:cd_export_pass@localhost:5432/nestjs_cd_export_shadow?schema=public
 
       - uses: docker/login-action@v3
         with:
