@@ -15,6 +15,7 @@ permissions:
   contents: read
 
 env:
+  NODE_ENV: test
   DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
   BACKEND_IMAGE: ${{ vars.DOCKER_USERNAME || github.repository_owner }}/${{ vars.DOCKER_REPO_NAME || github.event.repository.name }}
   DOCS_IMAGE: ${{ vars.DOCKER_USERNAME || github.repository_owner }}/${{ vars.DOCKER_DOCS_REPO_NAME || format('{0}-docs', github.event.repository.name) }}
