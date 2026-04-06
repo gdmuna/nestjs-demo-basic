@@ -1,15 +1,10 @@
-name: CD - Production
+name: CD - Development (dev)
 
 on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to deploy (e.g., v1.0.0)'
-        required: true
-        type: string
+  workflow_run:
+    workflows: ['CI - Development (dev)']
+    branches: [dev]
+    types: [completed]
 
 env:
   DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME || github.repository_owner }}
@@ -17,57 +12,28 @@ env:
   DOCS_IMAGE: ${{ vars.DOCKER_USERNAME || github.repository_owner }}/${{ vars.DOCKER_DOCS_REPO_NAME || format('{0}-docs', github.event.repository.name) }}
 
 concurrency:
-  group: cd-production-${{ github.ref }}
+  group: cd-development
   cancel-in-progress: false
 
 jobs:
-  # ── 1. 提取版本信息 ─────────────────────────────────────────
-  extract-version:
-    name: Extract version
+  # ── 1. 构建并推送后端镜像 ───────────────────────────────────
+  build-backend:
+    name: Build & Push Backend Image
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.info.outputs.version }}
-      tag_name: ${{ steps.info.outputs.tag_name }}
-      sha7: ${{ steps.info.outputs.sha7 }}
-      backend_tag_versioned: ${{ steps.info.outputs.backend_tag_versioned }}
-      backend_tag_latest: ${{ steps.info.outputs.backend_tag_latest }}
-      docs_tag_versioned: ${{ steps.info.outputs.docs_tag_versioned }}
-      docs_tag_latest: ${{ steps.info.outputs.docs_tag_latest }}
+      sha7: ${{ steps.meta.outputs.sha7 }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Extract build info
-        id: info
+      - name: Extract build metadata
+        id: meta
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            TAG_NAME="${{ github.event.inputs.tag }}"
-          else
-            TAG_NAME="${GITHUB_REF#refs/tags/}"
-          fi
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          SHA7="${GITHUB_SHA:0:7}"
-
-          {
-            echo "version=$VERSION"
-            echo "tag_name=$TAG_NAME"
-            echo "sha7=$SHA7"
-            echo "backend_tag_versioned=prod-$VERSION"
-            echo "backend_tag_latest=prod-latest"
-            echo "docs_tag_versioned=prod-$VERSION"
-            echo "docs_tag_latest=prod-latest"
-          } >> "$GITHUB_OUTPUT"
-
-  # ── 2. 构建并推送后端镜像 ───────────────────────────────────
-  build-backend:
-    name: Build & Push Backend Image
-    needs: extract-version
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          echo "sha7=${SHA:0:7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -83,18 +49,17 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ needs.extract-version.outputs.backend_tag_latest }}
-            ${{ env.BACKEND_IMAGE }}:${{ needs.extract-version.outputs.backend_tag_versioned }}
+            ${{ env.BACKEND_IMAGE }}:dev-latest
           build-args: |
-            GIT_COMMIT=${{ github.sha }}
-            APP_VERSION=${{ needs.extract-version.outputs.version }}
+            GIT_COMMIT=${{ github.event.workflow_run.head_sha }}
+            APP_VERSION=dev-${{ steps.meta.outputs.sha7 }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── 3. 导出 OpenAPI JSON（临时启动后端容器采集）─────────────
+  # ── 2. 导出 OpenAPI JSON ────────────────────────────────────
   export-openapi:
     name: Export OpenAPI JSON
-    needs: [extract-version, build-backend]
+    needs: [build-backend]
     runs-on: ubuntu-latest
 
     services:
@@ -112,6 +77,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Run prisma migrations
         run: |
@@ -143,7 +110,7 @@ jobs:
             -e NODE_ENV=production \
             -e DATABASE_URL="postgresql://cd_export:cd_export_pass@localhost:5432/nestjs_cd_export?schema=public" \
             -e PORT=3000 \
-            ${{ env.BACKEND_IMAGE }}:${{ needs.extract-version.outputs.backend_tag_latest }}
+            ${{ env.BACKEND_IMAGE }}:dev-latest
 
       - name: Wait for backend to be healthy
         run: |
@@ -169,18 +136,26 @@ jobs:
       - name: Upload OpenAPI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: openapi-json-${{ github.run_id }}
+          name: openapi-json-dev-${{ github.run_id }}
           path: openapi.json
           retention-days: 1
 
-  # ── 4. 构建并推送文档镜像 ───────────────────────────────────
+  # ── 3. 构建并推送文档镜像（含 Scalar API 参考）────────────
   build-docs:
     name: Build & Push Docs Image
-    needs: [extract-version, build-backend]
+    needs: [export-openapi]
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Download OpenAPI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openapi-json-dev-${{ github.run_id }}
+          path: scripts/
 
       - uses: docker/setup-buildx-action@v3
 
@@ -193,15 +168,16 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: website/Dockerfile.prod
+          file: website/Dockerfile
           push: true
           tags: |
-            ${{ env.DOCS_IMAGE }}:${{ needs.extract-version.outputs.docs_tag_latest }}
-            ${{ env.DOCS_IMAGE }}:${{ needs.extract-version.outputs.docs_tag_versioned }}
+            ${{ env.DOCS_IMAGE }}:dev-latest
+          build-args: |
+            OPENAPI_JSON_PATH=scripts/openapi.json
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── 5. 通知服务器拉取新镜像（Watchtower）─────────────────
+  # ── 4. 通知服务器拉取新镜像（Watchtower）─────────────────
   notify-server:
     name: Notify Server (Watchtower)
     needs: [build-backend, build-docs]
@@ -222,52 +198,14 @@ jobs:
             exit 1
           fi
 
-  # ── 6. 推送 Swagger JSON 到 Apifox ─────────────────────────
-  sync-apifox:
-    name: Sync OpenAPI to Apifox
-    needs: [export-openapi]
-    runs-on: ubuntu-latest
-    continue-on-error: true # Apifox 同步失败不阻断 CD 主流程
-
-    steps:
-      - name: Download OpenAPI artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: openapi-json-${{ github.run_id }}
-          path: .
-
-      - name: Push OpenAPI to Apifox
-        run: |
-          RESPONSE=$(curl -sf --max-time 60 \
-            -X POST "https://api.apifox.com/v1/projects/${{ secrets.APIFOX_PROJECT_ID }}/import-openapi?locale=zh-CN" \
-            -H "X-Apifox-Api-Version: 2024-03-28" \
-            -H "Authorization: Bearer ${{ secrets.APIFOX_ACCESS_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            --data-raw "$(jq -n \
-              --slurpfile spec openapi.json \
-              '{
-                input: { url: null, content: ($spec[0] | tojson) },
-                options: {
-                  endpointOverwriteBehavior: "OVERWRITE_EXISTING",
-                  schemaOverwriteBehavior: "OVERWRITE_EXISTING",
-                  updateFolderOfChangedEndpoint: true,
-                  prependBasePath: false,
-                  deleteUnmatchedResources: false
-                }
-              }')")
-          echo "Apifox response:"
-          echo "$RESPONSE" | python3 -m json.tool || echo "$RESPONSE"
-
-  # ── 7. 汇总报告 ──────────────────────────────────────────────
+  # ── 5. 汇总报告 ──────────────────────────────────────────────
   finished:
     name: CD Summary
     needs:
-      - extract-version
       - build-backend
       - export-openapi
       - build-docs
       - notify-server
-      - sync-apifox
     if: always()
     runs-on: ubuntu-latest
 
@@ -275,8 +213,9 @@ jobs:
       - name: Generate summary
         run: |
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
-          VERSION="${{ needs.extract-version.outputs.version }}"
-          TAG="${{ needs.extract-version.outputs.tag_name }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHA7="${SHA:0:7}"
+          CI_RESULT="${{ github.event.workflow_run.conclusion }}"
 
           status_icon() {
             case "$1" in
@@ -292,12 +231,19 @@ jobs:
           EO=$(status_icon "${{ needs.export-openapi.result }}")
           BD=$(status_icon "${{ needs.build-docs.result }}")
           NS=$(status_icon "${{ needs.notify-server.result }}")
-          SA=$(status_icon "${{ needs.sync-apifox.result }}")
+
+          CI_ICON=$(status_icon "$CI_RESULT")
 
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
-          # 🚀 CD 报告 - Production
+          # 🚀 CD 报告 - Development
 
-          **版本**: \`$VERSION\` · **Tag**: \`$TAG\` · **时间**: $TIMESTAMP_CN
+          **分支**: dev · **提交**: \`$SHA7\` · **时间**: $TIMESTAMP_CN
+
+          ## CI 触发状态
+
+          | 触发 CI 结果 | 状态 |
+          |-------------|------|
+          | CI - Development | $CI_ICON $CI_RESULT |
 
           ## 执行状态
 
@@ -307,12 +253,9 @@ jobs:
           | OpenAPI 导出 | $EO ${{ needs.export-openapi.result }} |
           | 文档镜像构建 | $BD ${{ needs.build-docs.result }} |
           | 服务器通知   | $NS ${{ needs.notify-server.result }} |
-          | Apifox 同步  | $SA ${{ needs.sync-apifox.result }} |
 
           ## 镜像产物
 
-          - \`${{ env.BACKEND_IMAGE }}:prod-latest\`
-          - \`${{ env.BACKEND_IMAGE }}:prod-$VERSION\`
-          - \`${{ env.DOCS_IMAGE }}:prod-latest\`
-          - \`${{ env.DOCS_IMAGE }}:prod-$VERSION\`
+          - \`${{ env.BACKEND_IMAGE }}:dev-latest\`
+          - \`${{ env.DOCS_IMAGE }}:dev-latest\`
           EOF
