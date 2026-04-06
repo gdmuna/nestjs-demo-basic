@@ -28,9 +28,9 @@ const { setGitHubOutput } = require('./version-utils.cjs');
 // 从 release 分支名称提取版本前缀（major.minor）
 function extractExpectedVersionPrefix(ref) {
     // 期望格式：refs/heads/release-X.Y
-    const match = ref.match(/^refs\/heads\/release-(\d+\.\d+)$/);
+    const match = ref.match(/^refs\/heads\/release\/(\d+\.\d+)$/);
     if (!match) {
-        throw new Error(`Invalid release branch format: ${ref}. Expected: refs/heads/release-X.Y`);
+        throw new Error(`Invalid release branch format: ${ref}. Expected: refs/heads/release/X.Y`);
     }
     return match[1];
 }
