@@ -17,7 +17,7 @@ env:
 
 concurrency:
   group: cd-development
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   # ── 1. 构建并推送后端镜像 ───────────────────────────────────
