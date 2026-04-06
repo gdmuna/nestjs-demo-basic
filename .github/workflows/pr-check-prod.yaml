@@ -12,3 +12,4 @@ concurrency:
 jobs:
   ci:
     uses: ./.github/workflows/ci-reusable.yaml
+    secrets: inherit
