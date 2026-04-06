@@ -50,6 +50,7 @@ export const ClientExceptionCode = {
     description: '请求参数不符合 Schema 约束，details 字段包含各字段的具体错误信息',
     retryable: false,
     logLevel: 'info',
+    hint: '参考响应中 `details` 字段的字段级错误列表，逐项修正参数后重试',
     detailsSchema: {
         type: 'array',
         items: {
@@ -75,6 +76,8 @@ export class ValidationFailedException extends ValidationException {}
     description: '客户端请求频率超过服务端设定的速率限制，请遵循响应头 Retry-After 等待后重试',
     retryable: true,
     logLevel: 'warn',
+    causes: ['短时间内发送了超过服务端限流阈值的请求'],
+    hint: '遵循响应头 `Retry-After` 字段指示的等待时间后重试',
 })
 export class RateLimitException extends ClientException {}
 

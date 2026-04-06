@@ -1,5 +1,7 @@
 import { APP_VERSION, APP_AUTHOR } from '@/constants/index.js';
 
+import '@/common/exceptions/index.js'; // 全局注册异常
+
 import { AppModule } from './app.module.js';
 
 import { Logger } from '@/common/services/index.js';
@@ -11,25 +13,113 @@ import { Logger as pinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+import {
+    wrapSuccessResponses,
+    enrichErrorResponses,
+    enrichTagDescriptions,
+} from '@/common/utils/openapi-envelope.js';
 import cookieParser from 'cookie-parser';
+import { apiReference } from '@scalar/nestjs-api-reference';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bufferLogs: true });
     app.useLogger(app.get(pinoLogger));
     const logger = new Logger('Bootstrap');
 
-    app.use(helmet());
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    baseUri: ["'self'"],
+                    fontSrc: ["'self'", 'https://fonts.scalar.com', 'data:'],
+                    formAction: ["'self'"],
+                    frameAncestors: ["'self'"],
+                    imgSrc: ["'self'", 'data:', 'https:'],
+                    objectSrc: ["'none'"],
+                    scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+                    scriptSrcAttr: ["'none'"],
+                    styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+                    upgradeInsecureRequests: [],
+                    connectSrc: ["'self'"],
+                },
+            },
+        })
+    );
 
     app.use(cookieParser());
 
+    const apiDescription = `
+NestJS 后端基线模板 API，提供认证系统、健康检查和错误目录等基础能力。
+
+## 认证
+
+需要认证的端点使用 **Bearer Token**（JWT，EC 算法签发）：
+
+1. 通过 \`POST /auth/login\` 或 \`POST /auth/register\` 获取 \`accessToken\`
+2. 在请求头中携带：\`Authorization: Bearer <accessToken>\`
+
+刷新令牌（\`refresh_token\`）以 **HttpOnly Cookie** 形式存储，通过 \`POST /auth/refresh-token\` 静默轮转，无需手动传递。
+
+## 响应结构
+
+**成功响应**均被包裹为统一包络格式：
+\`\`\`json
+{
+  "success": true,
+  "data": { },
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "context": { "requestId": "01JXXX...", "time": 1700000000000, "version": "0.6.2" }
+}
+\`\`\`
+
+**错误响应**遵循统一结构，\`code\` 字段可在「错误码参考」查阅完整对照表：
+\`\`\`json
+{
+  "success": false,
+  "code": "ERROR_CODE",
+  "message": "人类可读描述",
+  "type": "http://localhost:3000/errors/ERROR_CODE",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "context": { "requestId": "..." },
+  "details": null
+}
+\`\`\`
+
+## 链接
+
+- [标准 Swagger UI](/api-doc)
+- [错误码参考（动态列表）](/errors)
+`.trim();
+
     const docConfig = new DocumentBuilder()
         .setTitle('Nestjs-Demo-Basic API')
-        .setDescription('The API description')
-        .setVersion('1.0')
-        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+        .setDescription(apiDescription)
+        .setVersion(APP_VERSION)
+        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'accessToken')
         .build();
     const documentFactory = SwaggerModule.createDocument(app, docConfig);
-    SwaggerModule.setup('api-doc', app, cleanupOpenApiDoc(documentFactory));
+    const processedDoc = enrichTagDescriptions(
+        enrichErrorResponses(wrapSuccessResponses(cleanupOpenApiDoc(documentFactory)))
+    );
+    SwaggerModule.setup('api-doc', app, processedDoc);
+
+    app.use(
+        '/reference',
+        apiReference({
+            url: '/api-doc-json',
+            theme: 'elysiajs',
+            darkMode: true,
+            defaultOpenAllTags: true,
+            defaultHttpClient: {
+                targetKey: 'js',
+                clientKey: 'axios',
+            },
+            expandAllModelSections: true,
+            showDeveloperTools: 'never',
+            showOperationId: true,
+        })
+    );
 
     const port = parseInt(process.env.PORT ?? '3000');
     await app.listen(port).catch(async (err) => {

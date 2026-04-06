@@ -50,7 +50,7 @@ jobs:
         id: version
         run: |
           VERSION=$(node -e "console.log(require('./package.json').version)")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "📦 Application Version: $VERSION"
 
       - name: Configure Git
@@ -82,7 +82,7 @@ jobs:
             echo "⚠️ Tag ${TAG_NAME} already pushed by another workflow"
             echo "✅ Concurrent execution handled gracefully"
             COMMIT_SHA=$(git rev-list -n 1 "${TAG_NAME}" | cut -c1-7)
-            echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+            echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -91,14 +91,14 @@ jobs:
             echo "✅ Tag ${TAG_NAME} pushed successfully"
             # 获取 tag 指向的 commit SHA（7位短哈希）
             COMMIT_SHA=$(git rev-list -n 1 "${TAG_NAME}" | cut -c1-7)
-            echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+            echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
           else
             # 推送失败，重新检查是否被其他工作流推送了
             git fetch origin --tags
             if git ls-remote origin "refs/tags/${TAG_NAME}" | grep -q "${TAG_NAME}"; then
               echo "✅ Tag was pushed by concurrent workflow"
               COMMIT_SHA=$(git rev-list -n 1 "${TAG_NAME}" | cut -c1-7)
-              echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+              echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
               exit 0
             else
               echo "❌ Failed to push tag and tag not found remotely"
@@ -124,7 +124,7 @@ jobs:
 
           if [ "$VERSION_VALID" != "true" ]; then
             # 版本验证失败的 summary
-            cat >> $GITHUB_STEP_SUMMARY << EOF
+            cat >> "$GITHUB_STEP_SUMMARY" << EOF
           # 🏷️ Auto Tag Release - ❌ Skipped
           ## ⚠️ 版本验证失败
           此工作流因 package.json 版本不符合要求而被跳过。
@@ -151,7 +151,7 @@ jobs:
           EOF
           else
             # 正常执行的 summary
-            cat >> $GITHUB_STEP_SUMMARY << EOF
+            cat >> "$GITHUB_STEP_SUMMARY" << EOF
           # 🏷️ Auto Tag Release
           ## 📋 基本信息
           - **触发事件**: pull_request

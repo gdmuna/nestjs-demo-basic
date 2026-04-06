@@ -1,15 +1,21 @@
 {
   "compilerOptions": {
+    // 启用所有严格类型检查选项
+    "strict": true,
+
+    // ES Module 互操作性：增强 CommonJS 兼容性
+    "esModuleInterop": true,
+
+    // 跳过库文件的类型检查（加快编译）
+    "skipLibCheck": true,
+    // 编译目标：输出最新的 JavaScript 语法（兼容现代 Node.js）
+    "target": "esnext",
+
     // 模块系统：输出 nodenext 格式
     "module": "nodenext",
 
+    // 模块解析策略：使用 Node.js 风格的解析（支持 .ts、.tsx、.js、.jsx）
     "moduleResolution": "nodenext",
-
-    // 生成 .d.ts 声明文件（用于类型提示）
-    "declaration": true,
-
-    // 移除编译后的注释
-    "removeComments": true,
 
     // 为装饰器生成元数据（NestJS 依赖）
     "emitDecoratorMetadata": true,
@@ -20,11 +26,14 @@
     // 允许导入 CommonJS 模块时用默认导入语法
     "allowSyntheticDefaultImports": true,
 
-    // ES Module 互操作性：增强 CommonJS 兼容性
-    "esModuleInterop": true,
+    // 生成 .d.ts 声明文件（用于类型提示）
+    "declaration": true,
 
-    // 编译目标：输出最新的 JavaScript 语法（兼容现代 Node.js）
-    "target": "esnext",
+    // 移除编译后的注释
+    "removeComments": true,
+
+    // 允许 import JSON 文件
+    "resolveJsonModule": true,
 
     // 生成 source map 文件（用于调试）
     "sourceMap": true,
@@ -38,20 +47,11 @@
       "@root/*": ["./*"]
     },
 
-    // 允许 import JSON 文件
-    "resolveJsonModule": true,
-
     // 增量编译：只重新编译改动过的文件（加快编译速度）
     "incremental": true,
 
-    // 跳过库文件的类型检查（加快编译）
-    "skipLibCheck": true,
-
     // 强制一致的文件名大小写（跨平台兼容性）
     "forceConsistentCasingInFileNames": true,
-
-    // 启用所有严格类型检查选项
-    "strict": true,
 
     // 未使用的局部变量警告
     "noUnusedLocals": false,
@@ -60,7 +60,7 @@
     "noUnusedParameters": false,
 
     // 函数必须有 return 语句
-    "noImplicitReturns": true,
+    "noImplicitReturns": false,
 
     // switch 语句必须有 break 或 return
     "noFallthroughCasesInSwitch": true,

@@ -2,8 +2,8 @@
 title: 版本路线图
 inherits: docs/04-planning/STANDARD.md
 status: active
-version: "0.5.3"
-last-updated: 2026-03-27
+version: "0.7.0"
+last-updated: 2026-04-06
 category: planning
 related:
   - docs/04-planning/STANDARD.md
@@ -22,7 +22,10 @@ related:
 
 | 版本 | 发布日期 | 状态 | 核心主题 |
 |------|---------|------|---------|
-| [v0.6.0](#v060--业务模块与文档工程进行中) | — | 🚧 进行中 | 认证、安全层、Swagger、dotenvx、文档工程 |
+| [v0.7.0](#v070--api-文档-文档站与-cicd-流水线) | 2026-04-06 | ✅ 已发布 | @ApiRoute、VitePress 文档站、可复用 CI、CD 自动部署 |
+| [v0.6.2](#v062--异常系统重构与配置架构整合) | 2026-04-04 | ✅ 已发布 | 异常体系重构、config 整合、Docker 编排、工具链升级 |
+| [v0.6.1](#v061--数据模型与中间件修复) | 2026-03-28 | ✅ 已发布 | Prisma schema 补全、Middleware 修复、文档更新 |
+| [v0.6.0](#v060--业务模块与文档工程) | 2026-03-27 | ✅ 已发布 | 认证、安全层、Swagger、dotenvx、文档工程 |
 | [v0.5.x](#v05x--nestjs-应用基础架构) | 2026-01~03 | ✅ 已发布 | NestJS 基础架构、可观测性、安全层 |
 | [v0.4.x](#v04x--cicd-安全加固与工程化完善) | 2025-12-23 | ✅ 已发布 | 命令注入修复、并行 Job、版本管理脚本 |
 | [v0.3.x](#v03x--提交规范与流程标准化) | 2025-12-20~21 | ✅ 已发布 | 提交规范、工作流重命名、Prisma 升级 |
@@ -31,9 +34,100 @@ related:
 
 ---
 
-## v0.6.0 — 业务模块与文档工程（进行中）
+## v0.7.0 — API 文档、文档站与 CI/CD 流水线
 
-> 分支：`dev`｜目标版本：v0.6.0｜状态：🚧 开发中
+> 发布日期：2026-04-06｜分支：`dev` → `main`｜状态：✅ 已发布
+
+**目标**：将 API 文档能力提升至生产级别，建立公开文档站，并完成 CI/CD 流水线的基础设施化。
+
+### API 文档增强
+
+- [x] **`@ApiRoute` 装饰器**：整合 `@Auth()`、OpenAPI 注解、错误码声明于单一装饰器，消除 Controller 层样板代码
+- [x] **OpenAPI 标准响应封装**：`wrapSuccessResponses()` 将所有 2xx 响应自动包裹为 `{ success, data, timestamp, context }` 格式
+- [x] **`@Cookie()` 装饰器**：提取并验证类型化的 Cookie 参数
+
+### VitePress 文档站
+
+- [x] **`website/` 子包**：集成 VitePress + Scalar，`/reference` 页面提供交互式 OpenAPI 文档
+- [x] **OpenAPI 导出脚本**：`scripts/generate-openapi.ts`，通过 `pnpm docs:gen-openapi` 从运行中的后端导出 `openapi.json`，支持 `BACKEND_URL` 覆盖
+
+### CI/CD 流水线
+
+- [x] **可复用 CI 工作流**（`ci-reusable.yaml`）：lint / format / test 三段阶段提取复用，六个触发流程统一引用；新增 build job 验证编译产物
+- [x] **CD-dev 工作流**（`cd-dev.yaml`）：CI 成功后自动构建并推送 `:dev-latest` 镜像，Watchtower HTTP API 通知服务器
+- [x] **三段式 CD 模式**：后端镜像构建 → OpenAPI 导出 → 文档镜像构建（内嵌最新 `openapi.json`）
+- [x] **CD-prod 工作流**：支持 `workflow_dispatch` 手动指定 tag 部署，三个 checkout 步骤均使用动态 `ref`
+
+### 重构 / 配置
+
+- [x] **`CorsMiddleware` / `TimeoutInterceptor` / `ThrottlerModule`**：改为通过 `ConfigService` 注入 HTTP 配置，新增 `http.constant.ts`
+- [x] **`prisma.config.ts`**：按 `NODE_ENV` 动态选择 `.env.*` 文件
+- [x] **`error-catalog` → `error-reference`**：路径重命名，接口路径及文档同步更新
+
+### 缺陷修复
+
+- [x] `workflow_call` 调用方添加 `secrets: inherit`，修复 `DOTENV_PRIVATE_KEY_TEST` 在 reusable workflow 内为空的问题
+- [x] 修复 dotenvx 私钥缺失时 `PORT` 被注入密文、解析为 `NaN` 的问题
+- [x] 修复三条 CI/CD 流水线中 Shadow Database URL 与主库相同导致 Prisma 迁移失败的问题
+- [x] 修复 CD-dev `cancel-in-progress: false` 导致旧提交可能覆盖新部署的竞态问题
+
+---
+
+## v0.6.2 — 异常系统重构与配置架构整合
+
+> 发布日期：2026-04-04｜分支：`dev`｜状态：✅ 已发布
+
+**目标**：彻底重构异常体系、整合配置层，并完成基础设施模块的分离与标准化。
+
+### ⚠️ 破坏性变更
+
+- **`BusinessException` 已删除**：改为基于 `@RegisterException` 装饰器的分层异常体系（`ClientException` / `SystemException`）
+- **`config/` 目录已移除**：所有 `registerAs` 工厂函数和 Zod schema 整合至 `src/constants/`
+- **`RequestContextService` 重命名为 `AlsService`**：迁移至 `src/infra/als/`
+
+### 异常系统
+
+- [x] **分层异常架构**：`AppException → ClientException / SystemException`，`@RegisterException` 集中注册元数据
+- [x] **`ErrorRegistry` 单例**：统一管理错误码、HTTP 状态码、日志级别
+- [x] **按模块声明异常**：`auth.exception.ts`、`database.exception.ts` 各自独立
+- [x] **AllExceptionsFilter 拆分**：按异常类型分为 Zod / Throttler / 兜底三个 Filter
+
+### 配置与基础设施
+
+- [x] **`registerAs` 工厂函数**：`app`、`auth`、`database`、`observability` 命名空间，`z.infer<>` 派生类型，导出 `AllConfig`
+- [x] **`config/` 整合进 `src/constants/`**：新增 `app.constant.ts`（`IS_DEV/IS_TEST/IS_PROD/GIT_COMMIT`）、`database.constant.ts`、JWT 懒加载缓存
+- [x] **`AlsModule` / `DatabaseModule`** 提取为独立基础设施模块
+- [x] **`(data, err)` 元组结果模式**：替代 try/catch，应用于异步操作层
+
+### Docker / 部署
+
+- [x] **`docker-compose.yml`**：服务编排，`database` / `backend` 命名规范，健康检查，`SHADOW_DATABASE_URL` 支持
+- [x] **Dockerfile**：Node.js 22.22，runner 阶段集成 dotenvx，更新健康检查间隔
+
+### 工具链
+
+- [x] `cross-env` 替换为 `dotenvx`，Node.js 最低版本升至 22，PostgreSQL 最低版本升至 18
+- [x] TypeScript：移除 `baseUrl`，修正路径别名；Jest 模块解析改为 `nodenext`
+- [x] `pnpm-lock.yaml` 纳入版本追踪
+
+---
+
+## v0.6.1 — 数据模型与中间件修复
+
+> 发布日期：2026-03-28｜分支：`dev`｜状态：✅ 已发布
+
+**目标**：补全 Prisma 数据模型字段，修复中间件上下文处理缺陷，更新项目文档。
+
+- [x] **Prisma Schema 补全**：`schema.prisma` 新增字段定义，完善用户数据模型
+- [x] **`fix(middleware)`**：`AppMiddleware` 补充请求上下文字段处理逻辑
+- [x] **`README.md` 更新**：补充项目使用说明
+- [x] **`AGENTS.md` 更新**：完善 AI 协助者操作手册描述
+
+---
+
+## v0.6.0 — 业务模块与文档工程
+
+> 发布日期：2026-03-27｜分支：`dev`｜状态：✅ 已发布
 
 **目标**：完成第一个可用的业务功能（认证系统），补全生产就绪的安全层，并建立受版本控制的文档体系。
 

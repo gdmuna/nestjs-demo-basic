@@ -1,7 +1,7 @@
 {
   "name": "nestjs-demo-basic",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "一个使用 NestJS 构建的示例项目",
   "license": "MIT",
   "type": "module",
@@ -24,7 +24,12 @@
     "format:check": "prettier --check .",
     "env:encrypt": "dotenvx encrypt -f .env.development .env.test .env.production",
     "env:decrypt": "dotenvx decrypt -f .env.development .env.test .env.production",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docs:gen-reference": "tsx scripts/generate-error-reference.ts",
+    "docs:gen-openapi": "tsx scripts/generate-openapi.ts",
+    "docs:dev": "pnpm docs:gen-reference && pnpm --filter website dev",
+    "docs:build": "pnpm docs:gen-reference && pnpm --filter website build",
+    "docs:serve": "pnpm --filter website serve"
   },
   "keywords": [],
   "author": "Maiturin",
@@ -42,6 +47,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "@scalar/nestjs-api-reference": "^1.1.6",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
@@ -86,6 +92,7 @@
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "tsc-alias": "^1.8.16",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "lint-staged": {

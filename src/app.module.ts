@@ -21,8 +21,8 @@ import { DatabaseModule, AlsModule } from '@/infra/index.js';
 import { Module, MiddlewareConsumer, NestModule, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { LoggerModule } from 'nestjs-pino';
 import pino from 'pino';
 
@@ -31,35 +31,18 @@ import pino from 'pino';
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
-            // validate: () => {
-            //     const parsedEnvObj: Record<string, any> = {};
-            //     loadEnv(process.env.NODE_ENV, {
-            //         processEnv: parsedEnvObj,
-            //         quiet: true,
-            //     });
-            //     return envSchema.parse(parsedEnvObj);
-            // },
             load: allConfig,
         }),
         ThrottlerModule.forRootAsync({
             inject: [ConfigService],
             useFactory: (configService: ConfigService<AllConfig, true>) => {
-                const { isDev } = configService.get('app', { infer: true });
+                const { throttleTtlMs, throttleLimit } = configService.get('http', {
+                    infer: true,
+                });
                 return [
                     {
-                        name: 'global',
-                        ttl: 60000, // 1分钟
-                        limit: isDev ? 500 : 100,
-                    },
-                    {
-                        name: 'strict',
-                        ttl: 60000, // 1分钟
-                        limit: isDev ? 100 : 20, // 登录、支付等敏感操作
-                    },
-                    {
-                        name: 'public',
-                        ttl: 300000, // 5分钟
-                        limit: isDev ? Infinity : 1000, // 公开 API，较宽松
+                        ttl: throttleTtlMs,
+                        limit: throttleLimit,
                     },
                 ];
             },
@@ -68,11 +51,12 @@ import pino from 'pino';
             inject: [ConfigService],
             useFactory: (configService: ConfigService<AllConfig, true>) => {
                 const { isDev, isProd, appName } = configService.get('app', { infer: true });
+                const { logLevel } = configService.get('observability', { infer: true });
                 return {
                     pinoHttp: [
                         {
                             name: appName,
-                            level: process.env.LOG_LEVEL || (!isProd ? 'trace' : 'info'),
+                            level: logLevel ?? (!isProd ? 'trace' : 'info'),
                             // prettier-ignore
                             transport:
                             isDev ? {
@@ -88,13 +72,6 @@ import pino from 'pino';
                                 err: () => undefined, // 错误堆栈交由 exceptions.filter 处理，避免重复记录
                                 req: () => undefined, // 请求信息交由 performance.interceptor 处理，避免重复记录
                             },
-                            // prettier-ignore
-                            // 全局隐藏敏感信息
-                            redact:
-                            !isDev ? {
-                                paths: ['*.headers.authorization'],
-                                censor: '[REDACTED]',
-                            } : undefined,
                             autoLogging: false,
                         },
                         pino.destination({

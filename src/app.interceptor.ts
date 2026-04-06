@@ -121,7 +121,13 @@ export class ResponseFormatInterceptor implements NestInterceptor {
  */
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
-    private readonly timeoutMs = parseInt(process.env.REQUEST_TIMEOUT_MS || '30000'); // 默认 30 秒
+    private readonly timeoutMs: number;
+
+    constructor(private readonly configService: ConfigService<AllConfig, true>) {
+        this.timeoutMs = this.configService.get('http.requestTimeoutMs', {
+            infer: true,
+        });
+    }
 
     intercept(_: ExecutionContext, next: CallHandler) {
         return next.handle().pipe(

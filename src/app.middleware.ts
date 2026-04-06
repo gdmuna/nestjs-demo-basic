@@ -14,9 +14,10 @@ export class RequestPreprocessingMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService<AllConfig, true>) {}
 
     use(req: Request, res: Response, next: NextFunction) {
-        const reqId = req.headers['flx-request-id'] ?? ulid();
+        const requestIdHeader = this.configService.get('http.requestIdHeader', { infer: true });
+        const reqId = req.headers[requestIdHeader] ?? ulid();
         req.id = typeof reqId === 'string' ? reqId : reqId[0];
-        res.setHeader('flx-request-id', req.id);
+        res.setHeader(requestIdHeader, req.id);
         req.version = this.configService.get('app.appVersion', { infer: true });
         next();
     }
@@ -112,7 +113,9 @@ export class CorsMiddleware implements NestMiddleware {
             return true;
         }
 
-        const allowedOrigins = this.getAllowedOrigins();
+        const allowedOrigins = this.configService.get('http.corsAllowedOrigin', {
+            infer: true,
+        });
         return allowedOrigins.length === 0 || allowedOrigins.includes(origin);
     }
 
@@ -123,36 +126,11 @@ export class CorsMiddleware implements NestMiddleware {
         if (origin) {
             res.header('Access-Control-Allow-Origin', origin);
         }
-        res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,flx-request-id');
+        const { corsAllowedHeaders, corsAllowedMethods, corsPreflightMaxAgeSeconds } =
+            this.configService.get('http', { infer: true });
+        res.header('Access-Control-Allow-Headers', corsAllowedHeaders);
+        res.header('Access-Control-Allow-Methods', corsAllowedMethods);
         res.header('Access-Control-Allow-Credentials', 'true');
-        res.header('Access-Control-Max-Age', '86400');
-    }
-
-    /**
-     * 获取允许的源列表
-     */
-    private getAllowedOrigins(): string[] {
-        const origins: string[] = [];
-
-        // 生产环境白名单
-        if (process.env.ALLOWED_ORIGINS_PROD) {
-            origins.push(
-                ...process.env.ALLOWED_ORIGINS_PROD.split(',')
-                    .map((o) => o.trim())
-                    .filter((o) => o)
-            );
-        }
-
-        // 开发环境额外白名单
-        if (process.env.NODE_ENV === 'development' && process.env.ALLOWED_ORIGINS_DEV) {
-            origins.push(
-                ...process.env.ALLOWED_ORIGINS_DEV.split(',')
-                    .map((o) => o.trim())
-                    .filter((o) => o)
-            );
-        }
-
-        return origins;
+        res.header('Access-Control-Max-Age', String(corsPreflightMaxAgeSeconds));
     }
 }

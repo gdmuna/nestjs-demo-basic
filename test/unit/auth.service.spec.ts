@@ -22,11 +22,19 @@ describe('AuthService', () => {
         verifyToken: jest.fn(),
     };
 
+    const mockConfigService: any = {
+        get: jest.fn().mockReturnValue(10),
+    };
+
     let service: AuthService;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        service = new AuthService(mockDatabaseService, mockTokenService as unknown as TokenService);
+        service = new AuthService(
+            mockDatabaseService,
+            mockTokenService as unknown as TokenService,
+            mockConfigService
+        );
     });
 
     it('login should return access token and refresh token', async () => {

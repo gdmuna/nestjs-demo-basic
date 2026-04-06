@@ -139,11 +139,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# lock file
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
 # Prisma
 prisma/generated/
 

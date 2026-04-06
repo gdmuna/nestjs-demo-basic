@@ -3,6 +3,8 @@ import { TokenService } from './token.service.js';
 
 import { DatabaseService } from '@/infra/database/database.service.js';
 
+import { AllConfig } from '@/constants/index.js';
+
 import {
     DuplicateUserException,
     InvalidCredentialsException,
@@ -10,6 +12,7 @@ import {
 } from '../auth.exception.js';
 
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 
 interface AuthResult {
@@ -26,7 +29,8 @@ interface AuthResult {
 export class AuthService {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly tokenService: TokenService
+        private readonly tokenService: TokenService,
+        private readonly configService: ConfigService<AllConfig, true>
     ) {}
 
     /**
@@ -55,7 +59,10 @@ export class AuthService {
             throw new DuplicateUserException();
         }
 
-        const passwordHash = await bcrypt.hash(payload.password, 10);
+        const passwordHash = await bcrypt.hash(
+            payload.password,
+            this.configService.get('auth.bcryptSaltRound', { infer: true })
+        );
         const user = await this.databaseService.user.create({
             data: {
                 username,

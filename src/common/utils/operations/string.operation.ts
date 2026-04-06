@@ -78,6 +78,26 @@ export function toCamelCase(value: string): string {
 }
 
 /**
+ *  转换为 snake_case（小写_分隔）。
+ *  处理 camelCase、kebab-case、空格、特殊字符等。
+ * @param value - 待转换的字符串
+ * @returns snake_case 字符串
+ *
+ * @example
+ * toSnakeCase('helloWorld')  // 'hello_world'
+ * toSnakeCase('HELLO')      // 'hello'
+ * toSnakeCase('hello world') // 'hello_world'
+ */
+export function toSnakeCase(value: string): string {
+    return value
+        .trim()
+        .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+        .replace(/[\s-]+/g, '_')
+        .replace(/[^a-zA-Z\d_]/g, '')
+        .toLowerCase();
+}
+
+/**
  * 截断字符串并附加后缀。
  * 常用于 UI 显示描述、标签等有长度限制的地方。
  *
