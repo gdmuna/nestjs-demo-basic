@@ -5,6 +5,120 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] - 2026-04-06
+
+### ✨ 新功能
+
+#### API 文档
+
+- **`@ApiRoute` 装饰器**：整合认证声明、OpenAPI 文档注解、错误码注册于单一装饰器，消除 Controller 层的重复样板代码
+- **OpenAPI 标准响应封装**：新增 `wrapSuccessResponses()`，将所有 2xx 响应自动包裹为标准 envelope 格式（`success / data / timestamp / context`）
+- **`@Cookie()` 装饰器**：新增用于提取并验证 Cookie 参数的装饰器
+
+#### 文档站
+
+- **VitePress 文档站**：新增 `website/` 子包，集成 VitePress + Scalar 构建文档站，可在 `/reference` 访问交互式 OpenAPI 文档
+- **OpenAPI 导出脚本**：新增 `scripts/generate-openapi.ts`，从运行中的后端 `/api-doc-json` 自动导出 `openapi.json`（通过 `pnpm docs:gen-openapi` 调用，支持 `BACKEND_URL` 环境变量覆盖）
+
+#### CI/CD 流水线
+
+- **可复用 CI 工作流**：将 lint/format/test 三个阶段抽取为 `ci-reusable.yaml`，由 `ci-dev`、`ci-prod`、`ci-feature`、`ci-release`、`pr-check-dev`、`pr-check-prod` 六个触发流程统一复用
+- **CD-dev 工作流**：新增 `cd-dev.yaml`，在 CI 成功后自动构建并推送后端镜像与文档镜像（`:dev-latest`），并通过 Watchtower HTTP API 通知服务器拉取新镜像
+- **CD 流程重构**：统一后端镜像构建 → OpenAPI 导出 → 文档镜像构建（内嵌最新 `openapi.json`）的三段式 CD 模式
+
+### ♻️ 重构
+
+- **`refactor(src)`**：CorsMiddleware、TimeoutInterceptor、ThrottlerModule 等模块改为通过 ConfigService 注入 HTTP 配置，不再直接读取 `process.env`；新增 `src/constants/http.constant.ts` 汇聚 CORS / 限流 / 超时配置
+- **`refactor(api-doc)`**：`error-catalog` 路径重命名为 `error-reference`；`route.decorator.ts` 与 `openapi-envelope.ts` 重构，增强错误响应格式化；删除已合并至 exception-registry 的 `error.constant.ts`
+- **`refactor(infra)`**：`prisma.config.ts` 改为按 `process.env.NODE_ENV` 动态选择 `.env.*` 文件，不再硬编码 `development`
+
+### 🐛 修复
+
+- **`fix(ci)`**：修复 `workflow_call` 调用方未声明 `secrets: inherit` 导致 `DOTENV_PRIVATE_KEY_TEST` 在 reusable workflow 内为空的问题
+- **`fix(ci)`**：修复 dotenvx 私钥缺失时 `PORT` 被注入密文字符串、解析为 `NaN` 导致 Zod 校验失败的问题，在 CI env override 步骤中显式设置 `PORT=3000`
+- **`fix(workflow)`**：修复 CI/CD 中 Shadow Database URL 与主库 URL 相同导致 Prisma 迁移失败的问题，分别创建独立 shadow DB
+- **`fix(workflow)`**：修复 CD 工作流缺少 `SHADOW_DATABASE_URL` 环境变量的问题
+
+### 🔧 构建 / 工具链
+
+- **dotenvx 集成至 CI**：CI test job 通过 dotenvx 解密 `.env.test` 注入环境变量
+- **shellcheck 合规**：多行 `>> "$GITHUB_ENV"` 改为分组写法，消除 SC2129 警告
+- **工具链**：`pnpm-lock.yaml` 纳入版本追踪，ESLint ignore 规则与 pnpm-workspace 配置同步更新
+- **脚本清理**：移除已废弃的 `deploy-server.sh`、`validate-version.cjs`、`generate-snapshot-info.cjs`
+
+### 📚 文档
+
+- 更新错误参考文档，对齐重命名后的 `error-reference` 路径
+- 移除 Docusaurus 相关配置指南（已被 VitePress 替代）
+
+---
+
+## [0.6.2] - 2026-04-04
+
+### ⚠️ 破坏性变更
+
+- **异常系统重构**：`BusinessException` 已删除，改为基于 `@RegisterException` 装饰器模式的分层异常体系（`ClientException` / `SystemException`）；所有抛出异常的代码需通过新的异常类或 `CLIENT_EXCEPTION` / `SYS_EXCEPTION` 默认导出替换
+
+### ✨ 新功能
+
+#### 异常系统
+
+- **分层异常架构**：建立 `AppException → ClientException / SystemException` 继承体系，通过 `@RegisterException` 装饰器集中注册错误码与元数据
+- **Exception Registry**：新增 `ErrorRegistry` 单例，统一管理所有错误码、HTTP 状态码、日志级别等静态元数据
+- **按业务模块声明异常**：Auth 模块和数据库基础设施分别拥有独立的 `auth.exception.ts` / `database.exception.ts`
+
+#### 配置系统
+
+- **`refactor(config) → feat`**：新增 `config/` 目录，按命名空间（`app`、`auth`、`database`、`observability`、`error-catalog`）分别创建 `registerAs` 工厂函数，通过 `z.infer<>` 派生类型，导出 `AllConfig` 供 `ConfigService<AllConfig, true>` 严格模式注入
+- **常量层整合**：随后将 `config/` 目录整合进 `src/constants/`，消除跨目录依赖；新增 `app.constant.ts`（`IS_DEV / IS_TEST / IS_PROD / GIT_COMMIT`）、`database.constant.ts`、JWT 懒加载缓存等
+
+#### 基础设施
+
+- **结果处理模式**：引入 Go 风格 `(data, err)` 元组结果模式用于异步操作，替代 try/catch 模板代码
+- **`exception-catalog` 模块**：将 `error-catalog` 重命名为 `exception-catalog`，控制器使用新结果组合器简化
+- **`NODE_ENV` 与 `APP_AUTHOR` 常量**：新增至 `app.constant.ts`；支持可配置 JWT 算法（`JWT_ACCESS_ALGORITHM` / `JWT_REFRESH_ALGORITHM`）
+
+#### Docker / 部署
+
+- **Docker Compose 编排**：新增 `docker-compose.yml` 服务编排，服务名规范化（`database` / `backend`），增加健康检查与 SHADOW_DATABASE_URL 支持
+- **镜像优化**：Dockerfile 升级至 Node.js 22.22，runner 阶段集成 dotenvx，调整健康检查间隔
+
+### ♻️ 重构
+
+- **`refactor(infra)`**：将 ALS（AsyncLocalStorage）抽取为独立 `AlsModule`，将数据库上下文分离为 `DatabaseModule`；`RequestContextService` 重命名为 `AlsService` 并迁移至 `infra/als/`
+- **`refactor(exceptions)`**：删除 `BusinessException`；`AllExceptionsFilter` 重命名并拆分为专项 Filter（Zod / Throttler / 兜底）；`RuntimeContext` 字段重排并新增 `causeDescription`
+- **`refactor(modules)`**：异步操作结果模式对齐，`exception-catalog` 控制器使用新结果组合器
+- **`refactor(config)`**：`ThrottlerModule` / `LoggerModule` 改为 `forRootAsync` 消费 ConfigService；移除所有测试文件中的 `loadEnv()` 直接调用；`DatabaseService.handleQueryEvent` 简化，移除参数解析与 sanitization
+
+### 🐛 修复
+
+- **`fix(script)`**：修正 dotenvx 命令中错误的参数标志
+
+### 🔧 构建 / 工具链
+
+- **工具链升级**：以 `dotenvx` 替换 `cross-env`；Node.js 最低版本要求从 20 升至 22；PostgreSQL 最低版本要求从 15 升至 18
+- **TypeScript 配置**：移除 `baseUrl`，修正路径别名；Jest 模块解析改为 `nodenext`
+- **Pre-commit 钩子**：优化执行性能，新增条件式 env 加密逻辑
+
+---
+
+## [0.6.1] - 2026-03-28
+
+### ✨ 新功能
+
+- **Prisma Schema 更新**：`schema.prisma` 新增字段定义，完善数据模型
+
+### 🐛 修复
+
+- **`fix(middleware)`**：`AppMiddleware` 补充请求上下文字段处理逻辑
+
+### 📚 文档
+
+- 更新 `README.md`，补充项目使用说明
+- 更新 `AGENTS.md`，完善 AI 协助者操作手册描述
+
+---
+
 ## [0.6.0] - 2026-03-27
 
 ### ⚠️ 破坏性变更
