@@ -85,11 +85,8 @@ jobs:
 
       - name: Set CI database URLs
         run: |
-          {
-            echo "DATABASE_URL=postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public"
-            echo "SHADOW_DATABASE_URL=postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_shadow?schema=public"
-            echo "PORT=3000"
-          } >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public" >> "$GITHUB_ENV"
+          echo "SHADOW_DATABASE_URL=postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_shadow?schema=public" >> "$GITHUB_ENV"
 
       - name: Create shadow database
         run: |
@@ -104,7 +101,9 @@ jobs:
           echo "📦 Version: $VERSION"
 
       - name: Generate Prisma Client
-        run: pnpm prisma generate
+        run: pnpm prisma generate]
+        env:
+          DOTENV_PRIVATE_KEY_TEST: ${{ secrets.DOTENV_PRIVATE_KEY_TEST }}
 
       - name: Sync schema (CI DB)
         run: |
@@ -123,6 +122,8 @@ jobs:
 
       - name: Run tests with coverage
         run: pnpm test --ci --coverage
+        env:
+          DOTENV_PRIVATE_KEY_TEST: ${{ secrets.DOTENV_PRIVATE_KEY_TEST }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
