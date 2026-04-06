@@ -1,0 +1,118 @@
+name: CI Reusable
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22.22'
+      pnpm-version:
+        type: string
+        default: '10'
+    outputs:
+      version:
+        description: 'Application version from package.json'
+        value: ${{ jobs.test.outputs.version }}
+
+jobs:
+  lint-and-format:
+    name: Lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ci_test
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: nestjs_demo_basic_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
+      SHADOW_DATABASE_URL: postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "📦 Version: $VERSION"
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Sync schema (CI DB)
+        run: |
+          if compgen -G "prisma/migrations/*/migration.sql" > /dev/null 2>&1; then
+            echo "🔍 Validating schema.prisma matches migrations..."
+            pnpm prisma migrate diff \
+              --from-migrations ./prisma/migrations \
+              --to-schema-datamodel ./prisma/schema.prisma \
+              --exit-code || (echo "❌ schema.prisma has uncommitted changes — run pnpm db:migrate" && exit 1)
+            echo "✅ Schema matches, running migrate deploy"
+            pnpm prisma migrate deploy
+          else
+            echo "⚠️  No migration files, falling back to db push (dev phase)"
+            pnpm prisma db push
+          fi
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run tests with coverage
+        run: pnpm test --ci --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_id }}
+          path: coverage/
+          retention-days: 7

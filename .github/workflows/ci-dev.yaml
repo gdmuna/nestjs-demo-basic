@@ -1,11 +1,11 @@
-name: CI - Production (main)
+name: CI - Development (dev)
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
 
 concurrency:
-  group: ci-production-${{ github.ref }}
+  group: ci-development-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           esac
           TIMESTAMP_CN=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S %Z")
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
-          # 🔬 CI 报告 - Production (main)
+          # 🔬 CI 报告 - Development (dev)
           **分支**: ${{ github.ref_name }} · **提交**: ${GITHUB_SHA:0:7} · **时间**: $TIMESTAMP_CN
           | Job | 状态 |
           |-----|------|
