@@ -9,6 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default [
     {
+        // 排除第三方构建产物，避免 ESLint 扫描 VitePress 缓存和输出目录
+        ignores: ['website/.vitepress/cache/', 'website/dist/'],
+    },
+    {
         files: ['src/**/*.ts', 'test/**/*.ts'],
         languageOptions: {
             parser: tsParser,
@@ -56,8 +60,5 @@ export default [
                 },
             ], // 允许未使用的变量但警告
         },
-    },
-    {
-        ignores: ['node_modules/', 'dist/', 'coverage/', 'prisma/generated'],
     },
 ];
