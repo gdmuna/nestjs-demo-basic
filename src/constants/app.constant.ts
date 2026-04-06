@@ -11,7 +11,7 @@ export const NODE_ENV = _allowedEnvValue.includes(process.env.NODE_ENV as any)
     ? (process.env.NODE_ENV as (typeof _allowedEnvValue)[number])
     : 'development';
 
-export const PORT = process.env.PORT;
+export const PORT = process.env.PORT || 3000;
 
 export const PACKAGE_INFO = _package_info;
 

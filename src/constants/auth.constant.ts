@@ -81,9 +81,11 @@ export const REFRESH_TOKEN_COOKIE = {
         return process.env.JWT_REFRESH_COOKIE_PATH || '/auth';
     },
     get MAX_AGE_MS() {
-        return Number(process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS ?? 7 * 24 * 60 * 60 * 1000);
+        return Number(process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000);
     },
 };
+
+export const BCRYPT_SALT_ROUND = Number(process.env.BCRYPT_SALT_ROUND || 10);
 
 const AuthConfigValidateSchema = z
     .object({
@@ -117,6 +119,8 @@ const AuthConfigValidateSchema = z
             .transform((v) => v === 'true'),
         JWT_REFRESH_COOKIE_PATH: z.string().default('/auth'),
         JWT_REFRESH_COOKIE_MAX_AGE_MS: z.coerce.number().default(7 * 24 * 60 * 60 * 1000),
+        // bcrypt
+        BCRYPT_SALT_ROUND: z.coerce.number().int().min(8).max(14).default(10),
     })
     .transform((env) => ({
         accessToken: {
@@ -147,6 +151,7 @@ const AuthConfigValidateSchema = z
             path: env.JWT_REFRESH_COOKIE_PATH,
             maxAgeMs: env.JWT_REFRESH_COOKIE_MAX_AGE_MS,
         },
+        bcryptSaltRound: env.BCRYPT_SALT_ROUND,
     }));
 
 export const authConfig = registerAs('auth', () => AuthConfigValidateSchema.parse(process.env));

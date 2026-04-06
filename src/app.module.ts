@@ -36,11 +36,13 @@ import pino from 'pino';
         ThrottlerModule.forRootAsync({
             inject: [ConfigService],
             useFactory: (configService: ConfigService<AllConfig, true>) => {
-                const { isDev } = configService.get('app', { infer: true });
+                const { throttleTtlMs, throttleLimit } = configService.get('http', {
+                    infer: true,
+                });
                 return [
                     {
-                        ttl: 300000, // 5分钟
-                        limit: isDev ? Infinity : 1000,
+                        ttl: throttleTtlMs,
+                        limit: throttleLimit,
                     },
                 ];
             },
@@ -49,11 +51,12 @@ import pino from 'pino';
             inject: [ConfigService],
             useFactory: (configService: ConfigService<AllConfig, true>) => {
                 const { isDev, isProd, appName } = configService.get('app', { infer: true });
+                const { logLevel } = configService.get('observability', { infer: true });
                 return {
                     pinoHttp: [
                         {
                             name: appName,
-                            level: process.env.LOG_LEVEL || (!isProd ? 'trace' : 'info'),
+                            level: logLevel ?? (!isProd ? 'trace' : 'info'),
                             // prettier-ignore
                             transport:
                             isDev ? {
