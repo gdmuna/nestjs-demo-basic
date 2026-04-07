@@ -61,6 +61,14 @@ date: 2026-04-07
   - `NODE_ENV=production` 改为 `NODE_ENV=test`（dotenvx 按 `NODE_ENV` 匹配解密文件；`production` 对应 `DOTENV_PRIVATE_KEY_PRODUCTION`，`test` 对应 `DOTENV_PRIVATE_KEY_TEST`）
 
 - **`fix(ci)`**：`cd-dev.yaml` 文档镜像构建更新 Dockerfile 引用路径，由 `website/Dockerfile` 改为 `website/Dockerfile.dev`
+- **`fix(ci)`**：修复 `cd-dev.yaml` artifact 上传/下载路径错误
+  - upload `path: assets` → `path: openapi.json`（原来上传了不含文件的目录）
+  - download `path: assets/openapi.json` → `path: assets`（`path` 为目标目录，不是文件路径）
+  - `build-docs` 和 `sync-apifox` 两处同步修正；移除 `OPENAPI_JSON_PATH` 和 `--slurpfile` 中多余的 `./` 前缀
+- **`fix(ci)`**：`cd-prod.yaml` `build-docs` job 补全缺失依赖和参数
+  - `needs` 增加 `export-openapi`
+  - 增加 `download-artifact` 步骤
+  - `build-args` 传入 `OPENAPI_JSON_PATH=assets/openapi.json`
 
 ### 🔧 构建 / 工具链
 
@@ -76,10 +84,13 @@ date: 2026-04-07
 .github/workflows/
   cd-dev.yaml     ← 文档镜像构建 Dockerfile 路径改为 website/Dockerfile.dev
                   ← 迁入 sync-apifox job
+                  ← 修复 artifact upload path: assets → openapi.json
+                  ← 修复 artifact download path: assets/openapi.json → assets
   cd-prod.yaml    ← 移除 "Decrypt .env.test" 步骤
                   ← docker run 改为 -e DOTENV_PRIVATE_KEY_TEST
                   ← NODE_ENV=production → NODE_ENV=test
                   ← 移除 sync-apifox job
+                  ← build-docs 增加 export-openapi 依赖 + download-artifact + OPENAPI_JSON_PATH
 package.json      ← docs:gen-openapi / docs:dev 改用 dotenvx
 scripts/
   generate-openapi.ts  ← 输出路径改为 website/api-reference/openapi.json

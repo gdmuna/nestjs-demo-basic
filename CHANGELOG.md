@@ -34,6 +34,8 @@
   - 改为 `docker run -e DOTENV_PRIVATE_KEY_TEST=...`，容器内 dotenvx 解密 `.env.test`
   - `NODE_ENV=production` 改为 `NODE_ENV=test`，与 `.env.test` 文件及私钥名 `DOTENV_PRIVATE_KEY_TEST` 保持一致
 - **`fix(ci)`**：`cd-dev.yaml` 文档镜像构建更新 Dockerfile 引用为 `website/Dockerfile.dev`
+- **`fix(ci)`**：修复 `cd-dev.yaml` artifact 上传路径错误（`path: assets` → `path: openapi.json`）；下载路径错误（`path: assets/openapi.json` → `path: assets`）；`build-docs` 和 `sync-apifox` 两处同步修正
+- **`fix(ci)`**：修复 `cd-prod.yaml` `build-docs` job 缺少 `export-openapi` 依赖及 `OPENAPI_JSON_PATH` build-arg，确保 prod 镜像构建时能正确注入最新导出的 `openapi.json`
 
 ### 🔧 构建 / 工具链
 

@@ -50,6 +50,7 @@ related:
 - [x] **sync-apifox 迁移**（`feat(ci)`）：Apifox 同步 Job 从 `cd-prod.yaml` 迁移至 `cd-dev.yaml`
 - [x] **cd-dev Dockerfile 引用修正**（`fix(ci)`）：更新为 `website/Dockerfile.dev`
 - [x] **cd-prod 导出容器启动修复**（`fix(ci)`）：移除中间解密文件写入步骤，改为直接传入 `DOTENV_PRIVATE_KEY_TEST` 环境变量；`NODE_ENV=production` → `NODE_ENV=test`
+- [x] **artifact 路径修复**（`fix(ci)`）：修复 `cd-dev.yaml` upload/download 路径错误；修复 `cd-prod.yaml` `build-docs` 缺少 `export-openapi` 依赖和 `OPENAPI_JSON_PATH` build-arg
 - [x] **环境变量重新加密**（`chore(env)`）：`.env.development/.production/.test` 全部重新加密，新增 `VITE_API_DOCS_PORT` 条目
 
 ---
