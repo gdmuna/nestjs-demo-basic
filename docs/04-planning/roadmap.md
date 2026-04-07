@@ -22,7 +22,7 @@ related:
 
 | 版本 | 发布日期 | 状态 | 核心主题 |
 |------|---------|------|---------|
-| [v0.7.3](#v073--cd-prod-导出容器启动修复) | 2026-04-07 | ✅ 已发布 | cd-prod OpenAPI 导出容器环境变量注入方式修复 |
+| [v0.7.3](#v073--文档站内嵌-scalar-与-cicd-同步) | 2026-04-07 | ✅ 已发布 | 文档站 Docker dev/prod 拆分、prod 镜像内嵌 Scalar、VitePress 动态配置、CI 同步 |
 | [v0.7.2](#v072--cicd-工作流补缺) | 2026-04-07 | ✅ 已发布 | cd-dev / cd-prod Postgres 端口映射补缺 |
 | [v0.7.1](#v071--cicd-修复与架构文档同步) | 2026-04-06 | ✅ 已发布 | PostgreSQL 健康检查、分支匹配、构建管理修复 |
 | [v0.7.0](#v070--api-文档-文档站与-cicd-流水线) | 2026-04-06 | ✅ 已发布 | @ApiRoute、VitePress 文档站、可复用 CI、CD 自动部署 |
@@ -37,15 +37,20 @@ related:
 
 ---
 
-## v0.7.3 — cd-prod 导出容器启动修复
+## v0.7.3 — 文档站内嵌 Scalar 与 CI/CD 同步
 
 > 发布日期：2026-04-07｜分支：`release/0.7` → `main`｜状态：✅ 已发布
 
-**目标**：修复 `cd-prod.yaml` 中 OpenAPI 导出容器无法正确加载应用配置的问题，无功能性变更。
+**目标**：文档站 Docker 配置拆分为 dev/prod 两套，prod 镜像内嵌 Scalar API Reference 页；VitePress 开发配置改用环境变量注入；CI/CD 同步更新；修复 cd-prod OpenAPI 导出容器启动问题。
 
-- [x] **移除中间解密文件写入步骤**（`fix(ci)`）：原先通过 `dotenvx decrypt --stdout > /tmp/.env.cd_export` 生成临时文件再以 `--env-file` 挂载，但 EC 私钥包含多行值，Docker `--env-file` 不支持多行变量，导致容器启动失败
-- [x] **改为直接传入私钥环境变量**：`docker run` 时直接传入 `-e DOTENV_PRIVATE_KEY_TEST=...`，容器内 dotenvx 自动解密 `.env.test`
-- [x] **`NODE_ENV=production` → `NODE_ENV=test`**：与 `.env.test` 文件及对应私钥名 `DOTENV_PRIVATE_KEY_TEST` 保持一致
+- [x] **Dockerfile 拆分为 dev/prod**（`feat(docs)`）：`Dockerfile` → `Dockerfile.dev`（外链 API Reference）；`Dockerfile.prod` 内嵌 Scalar 静态页（`/reference/api/`）和 `openapi.json`，离线可用
+- [x] **nginx.prod.conf 补全**（`feat(docs)`）：新增 gzip、安全 headers、`/reference/api` 静态位置、`/assets/` 长效缓存规则，结构对齐 `nginx.dev.conf`
+- [x] **VitePress 动态配置**（`feat(docs)`）：API Reference URL 和 dev server 端口改由 `VITE_API_REFERENCE_URL` / `VITE_API_DOCS_PORT` 环境变量驱动；`docs:gen-openapi` / `docs:dev` 脚本改用 dotenvx 注入
+- [x] **generate-openapi.ts 输出路径变更**（`feat(docs)`）：输出至 `website/api-reference/openapi.json`（原 `website/public/reference/openapi.json`）
+- [x] **sync-apifox 迁移**（`feat(ci)`）：Apifox 同步 Job 从 `cd-prod.yaml` 迁移至 `cd-dev.yaml`
+- [x] **cd-dev Dockerfile 引用修正**（`fix(ci)`）：更新为 `website/Dockerfile.dev`
+- [x] **cd-prod 导出容器启动修复**（`fix(ci)`）：移除中间解密文件写入步骤，改为直接传入 `DOTENV_PRIVATE_KEY_TEST` 环境变量；`NODE_ENV=production` → `NODE_ENV=test`
+- [x] **环境变量重新加密**（`chore(env)`）：`.env.development/.production/.test` 全部重新加密，新增 `VITE_API_DOCS_PORT` 条目
 
 ---
 
