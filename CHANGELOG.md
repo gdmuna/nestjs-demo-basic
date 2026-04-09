@@ -5,6 +5,61 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.4] - 2026-04-09
+
+### ✨ 新功能 / 改进
+
+#### 项目重命名
+
+- **`chore`**：项目正式更名为 **NestJS Scaffold**（原名 NestJS Demo Basic）
+  - `package.json` `name` 由 `nestjs-demo-basic` 改为 `nestjs-scaffold`
+  - `docker-compose.yml` compose project name 及 `APP_NAME` 默认值同步更新
+  - `src/main.ts` Swagger 标题、figlet 启动 Banner 同步更新
+  - 全局文档中所有展示名称同步替换
+
+#### 文档站全面重构
+
+- **`docs`**：文档目录编号重整，所有原有目录上移一级，腾出前置位给入门文档：
+  - `02-architecture/` → `03-architecture/`
+  - `03-reference/` → `04-reference/`
+  - `04-planning/` → `05-releases/`（目录职责同步调整为"发布文档"）
+  - `05-audits/` → `06-audits/`
+- **`docs`**：新增 `docs/00-getting-started/`（introduction、philosophy、quick-start）
+- **`docs`**：新增 `docs/02-harness/`（overview、feedback、feedforward、STANDARD）— Harness Engineering 专项文档区
+- **`docs`**：新增 `docs/index.md`（VitePress 首页）、`docs/changelog.md`、`docs/public/`（站点静态资源）
+- **`docs`**：新增 `docs/01-guides/`（development-workflow、docker-deployment、environment-setup、testing，原有 contributing.md 同步更新）
+- **`docs`**：删除 `docs/03-reference/api-reference.md`（内容整合至 `04-reference/`），删除 `04-planning/STANDARD.md` 和 `roadmap.md`
+- **`docs`**：全局将中文"驾驭工程"替换为英文"Harness Engineering"
+- **`docs`**：`docs/03-architecture/` 三份文档（exception-system、route-decorator、openapi-enrichment）去除"规划期"视角，全面对齐实现现状
+- **`docs`**：`README.md` 重写，新增功能特性、Harness Engineering 介绍、目录结构速览
+
+#### 容器安全
+
+- **`feat(dockerfile)`**：后端容器改为非 root 用户运行
+  - 新增 `RUN chown -R node:node /app` 和 `USER node`，使用 `node:22-slim` 内置的 node 用户（uid=1000）
+  - 遵循最小权限原则，符合容器安全最佳实践
+
+#### VitePress 站点升级
+
+- **`chore(website)`**：新增 `@mdit/plugin-tasklist` 实现任务列表渲染
+- **`chore(website)`**：侧边栏新增 Harness Engineering、Getting Started 等新节；更新导航项文案
+- **`chore(website)`**：Dockerfile.dev/prod、nginx.dev/prod.conf 对齐最新配置
+
+### 🔧 构建 / 工具链
+
+- **`build`**：`pnpm update -r` 升级 minor 依赖
+  - `@dotenvx/dotenvx-ops`: `^0.37.4` → `^0.37.8`
+  - `@nestjs/config`: `^4.0.3` → `^4.0.4`
+  - `@nestjs/swagger`: `^11.2.6` → `^11.2.7`
+  - `@prisma/adapter-pg`、`@prisma/client`、`prisma`: `^7.6.0` → `^7.7.0`
+  - `@nestjs/cli`: `^11.0.17` → `^11.0.19`
+  - `@typescript-eslint/eslint-plugin`、`parser`: `^8.58.0` → `^8.58.1`
+- **`chore`**：`AGENTS.md` 版本号更新至 0.7.4，删除 YAGNI / 防御性编程章节，新增 `pnpm format` 验证步骤
+- **`fix(scripts)`**：`scripts/generate-error-reference.ts` 输出路径更新（`03-reference` → `04-reference`）
+- **`fix`**：`src/constants/observability.constant.ts` `ERROR_REFERENCE_URL` 默认值更新（`03-reference` → `04-reference`）
+
+---
+
 ## [0.7.3] - 2026-04-07
 
 ### ✨ 新功能 / 改进
