@@ -2,14 +2,14 @@
 title: 审计文档规范
 inherits: docs/STANDARD.md
 status: active
-version: "0.5.3"
-last-updated: 2026-03-26
+version: "0.7.4"
+last-updated: 2026-04-09
 category: standard
 ---
 
 # 审计文档规范
 
-本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/05-audits/` 目录的专项约束。
+本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/06-audits/` 目录的专项约束。
 
 ---
 

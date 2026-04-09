@@ -1,24 +1,22 @@
 ---
 title: 项目架构全览
-inherits: docs/02-architecture/STANDARD.md
+inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.1"
 last-updated: 2026-04-06
 category: architecture
 related:
-  - docs/02-architecture/STANDARD.md
-  - docs/02-architecture/request-pipeline.md
-  - docs/02-architecture/auth-module.md
-  - docs/02-architecture/database.md
-  - docs/02-architecture/observability.md
-  - docs/02-architecture/cicd-deployment.md
+  - docs/03-architecture/STANDARD.md
+  - docs/03-architecture/request-pipeline.md
+  - docs/03-architecture/auth-module.md
+  - docs/03-architecture/database.md
+  - docs/03-architecture/observability.md
+  - docs/03-architecture/cicd-deployment.md
 ---
 
 # 项目架构全览
 
-> NestJS 生产级后端基线模板 v0.7.1。架构约束与文档规范见 [STANDARD.md](STANDARD.md)。
-
----
+> NestJS 生产级后端基线模板 v0.7.1。
 
 ## 1. 技术栈
 
@@ -36,8 +34,6 @@ related:
 | 测试 | Jest 30 + Supertest | 30.3.0 |
 | 容器 | Docker 多阶段（node:22-slim）| — |
 | 包管理 | pnpm | ≥8.0.0 |
-
----
 
 ## 2. 系统分层结构
 
@@ -88,8 +84,6 @@ flowchart TD
     AEF -.兜底捕获.-> BL
 ```
 
----
-
 ## 3. 模块职责
 
 | 模块 | 路径 | 职责 |
@@ -100,8 +94,6 @@ flowchart TD
 | Common | `src/common/` | 工具函数库、装饰器、AppException / ClientException / SystemException 异常基类体系 |
 | Constants | `src/constants/` | 所有常量的唯一定义来源 |
 | Infra | `src/infra/` | `DatabaseService`（Prisma + PG）、存储抽象 |
-
----
 
 ## 4. 子文档导航
 
@@ -114,8 +106,6 @@ flowchart TD
 | [observability.md](observability.md) | 日志、追踪、告警如何串联？ |
 | [cicd-deployment.md](cicd-deployment.md) | 代码如何从提交走到生产容器？ |
 
----
-
 ## 5. 关键设计决策摘要
 
 下列决策对架构有全局影响：
@@ -127,14 +117,3 @@ flowchart TD
 | 日志库 | Pino | 性能最优，原生 JSON，nestjs-pino 官方集成 |
 | 请求上下文 | AsyncLocalStorage | 无需手动传参，任意层级可访问请求 ID |
 | 验证库 | Zod 4 | TypeScript-first，运行时验证与类型推断统一 |
-
----
-
-## 引用
-
-- [架构设计规范](STANDARD.md)
-- [请求处理链路](request-pipeline.md)
-- [认证模块](auth-module.md)
-- [数据库](database.md)
-- [可观测性](observability.md)
-- [CI/CD 部署](cicd-deployment.md)

@@ -1,20 +1,18 @@
 ---
 title: CI/CD 与部署
-inherits: docs/02-architecture/STANDARD.md
+inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.3"
 last-updated: 2026-04-07
 category: architecture
 related:
-  - docs/02-architecture/STANDARD.md
-  - docs/02-architecture/project-architecture-overview.md
+  - docs/03-architecture/STANDARD.md
+  - docs/03-architecture/project-architecture-overview.md
 ---
 
 # CI/CD 与部署
 
 代码从提交到生产容器的完整流水线。
-
----
 
 ## 1. 分支策略与 Workflow 触发关系
 
@@ -28,8 +26,6 @@ flowchart LR
     PRD["PR 合并 → main\n（from release/*）"] --> AT["auto-tag-release\n版本提取 + tag 创建"]
     AT -- "tag 创建" --> CDP["cd-prod\n生产部署"]
 ```
-
----
 
 ## 2. Workflow 清单
 
@@ -47,8 +43,6 @@ flowchart LR
 | `pr-check-prod.yaml` | PR → `main` | 规范性检查 + 版本号检查 | — |
 
 **公共配置**：Node.js 22、pnpm 10、Runner: `ubuntu-latest`
-
----
 
 ## 3. 含 DB 服务的 CI 环境
 
@@ -69,8 +63,6 @@ flowchart LR
 postgresql://ci_test:ci_test_password@localhost:5432/nestjs_demo_basic_test?schema=public
 ```
 
----
-
 ## 4. 自动版本标签（auto-tag-release）
 
 当 `release/*` 分支的 PR 被合并到 `main` 时自动触发：
@@ -89,8 +81,6 @@ flowchart TD
 ```
 
 > `create-release-tag.cjs` 做幂等保护：tag 已存在时直接退出，不报错。
-
----
 
 ## 5. Docker 多阶段构建
 
@@ -140,8 +130,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 ```
 
 健康检查端点 `GET /health` 返回 DB 连接状态与应用版本，由 `AppController` 提供。
-
----
 
 ## 6. 文档站镜像构建
 
@@ -213,10 +201,3 @@ docker run -d \
 ```
 
 `NODE_ENV=test` 使 dotenvx 匹配解密 `.env.test`，对应私钥名为 `DOTENV_PRIVATE_KEY_TEST`。
-
----
-
-## 引用
-
-- [架构设计规范](STANDARD.md)
-- [项目架构全览](project-architecture-overview.md)

@@ -14,9 +14,7 @@ date: 2026-04-06
 
 1. **CI/CD 缺陷修复**：修复 v0.7.0 上线后暴露的 PostgreSQL 健康检查、分支匹配规则、脚本验证问题
 2. **文档构建修复**：解决 VitePress 保留字段冲突导致的文档镜像构建失败
-3. **架构文档同步**：完整同步所有 `docs/02-architecture/` 文档与 v0.7.0 + v0.7.1 实现完全对齐，确保文档的准确性
-
----
+3. **架构文档同步**：完整同步所有 `docs/03-architecture/` 文档与 v0.7.0 + v0.7.1 实现完全对齐，确保文档的准确性
 
 ## 变更内容
 
@@ -41,7 +39,7 @@ date: 2026-04-06
 
 #### 文档构建
 
-- **VitePress 构建崩溃**（`fix(docs)`）— `docs/04-planning/pr-0.7.0.md` frontmatter 使用 `head: dev`，与 VitePress 保留字段 `head`（类型必须为数组，用于注入 `<head>` 标签）冲突，导致文档镜像构建时抛出 `head.find is not a function`
+- **VitePress 构建崩溃**（`fix(docs)`）— `docs/05-releases/pr-0.7.0.md` frontmatter 使用 `head: dev`，与 VitePress 保留字段 `head`（类型必须为数组，用于注入 `<head>` 标签）冲突，导致文档镜像构建时抛出 `head.find is not a function`
   - 将字段重命名为 `branch: dev`
 
 ### 📚 架构文档同步（v0.7.0 + v0.7.1 实现完全对齐）
@@ -154,12 +152,10 @@ date: 2026-04-06
 
 - **`openapi.json` 移出 git 追踪**（`chore`）— `website/public/reference/openapi.json` 从 git 追踪中移除，添加至 `.gitignore`，避免每次导出 OpenAPI 文件后产生 6000+ 行无意义 diff
 
----
-
 ## 文件变更统计
 
 ```
-docs/02-architecture/
+docs/03-architecture/
   auth-module.md                    ← RS256 → ES256 Mermaid 修复
   project-architecture-overview.md  ← Node.js/PostgreSQL 版本、ExceptionCatalogController、Header 版本
   cicd-deployment.md                ← 工作流拓扑重写、表格重写、health check、localhost
@@ -184,14 +180,12 @@ docs/01-guides/
 scripts/
   validate-release-version.cjs      ← 版本前缀正则 release- → release/
 
-docs/04-planning/
+docs/05-releases/
   pr-0.7.0.md                       ← frontmatter head: dev → branch: dev
 
 .gitignore
   +                                 ← openapi.json
 ```
-
----
 
 ## 测试
 

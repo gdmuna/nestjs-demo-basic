@@ -1,27 +1,25 @@
 ---
 title: 路由契约装饰器设计
-inherits: docs/02-architecture/STANDARD.md
+inherits: docs/03-architecture/STANDARD.md
 status: active
-version: "0.7.1"
-last-updated: 2026-04-06
+version: "0.7.4"
+last-updated: 2026-04-09
 category: architecture
 related:
-  - docs/02-architecture/STANDARD.md
-  - docs/02-architecture/exception-system.md
-  - docs/02-architecture/openapi-enrichment.md
-  - docs/02-architecture/request-pipeline.md
-  - docs/02-architecture/auth-module.md
+  - docs/03-architecture/STANDARD.md
+  - docs/03-architecture/exception-system.md
+  - docs/03-architecture/openapi-enrichment.md
+  - docs/03-architecture/request-pipeline.md
+  - docs/03-architecture/auth-module.md
 ---
 
 # 路由契约装饰器设计
 
-本文档描述 `@ApiRoute()` 复合装饰器的完整设计，涵盖元数据键体系、认证策略声明、错误码绑定、消费层分工，以及与现有代码的向后兼容策略。
+本文档描述 `@ApiRoute()` 复合装饰器的完整设计，涵盖元数据键体系、认证策略声明、错误码绑定，以及行为消费层分工。
 
----
+## 1. 设计背景
 
-## 1. 设计动机
-
-当前每个控制器方法需要手工组合多个独立装饰器：
+在引入 `@ApiRoute()` 之前，每个控制器方法需要手工组合多个独立装饰器：
 
 ```typescript
 @Post('login')
@@ -43,8 +41,6 @@ related:
 
 `@ApiRoute()` 将"路由的契约意图"收归一处：一次声明，在 Guard、Swagger 富化器、运行时追踪等消费层各自分发。
 
----
-
 ## 2. 核心概念：路由契约
 
 **路由契约** = 一个路由对外承诺的完整约定，包括：
@@ -55,8 +51,6 @@ related:
 4. **元信息**：操作名、描述、是否废弃（供 Swagger 展示）
 
 装饰器只负责声明契约，不执行任何业务逻辑。各消费层独立读取元数据，按自己的职责处理。
-
----
 
 ## 3. 认证策略
 
@@ -71,8 +65,6 @@ type AUTH_STRATEGY_TYPE = 'public' | 'optional' | 'required';
 
 `AuthGuard` 通过 `Reflector.getAllAndOverride(AUTH_STRATEGY_KEY, ...)` 读取策略后执行不同分支。
 
----
-
 ## 4. 装饰器选项接口
 
 ```typescript
@@ -85,7 +77,7 @@ interface ApiRouteOptions {
 
     /**
      * 成功响应的 DTO 类型。
-     * openapi-enricher 读取后自动将其包裹进统一成功包络：
+     * openapi-envelope 读取后自动将其包裹进统一成功包络：
      * { success: true, data: <responseType>, timestamp, context }
      */
     responseType?: Type<unknown> | Record<string, unknown>;
@@ -112,16 +104,12 @@ interface ApiRouteOptions {
 }
 ```
 
----
-
 ## 5. 元数据键体系
 
 | 键常量 | 值 | 消费方 |
 |-------|----|--------|
 | `AUTH_STRATEGY_KEY` | `'auth:strategy'` | `AuthGuard`（通过 Reflector 读取策略值） |
-| `ROUTE_ERRORS_KEY` | `'route:errors'` | `openapi-enricher`（文档生成阶段） |
-
----
+| `ROUTE_ERRORS_KEY` | `'route:errors'` | `openapi-envelope`（文档生成阶段） |
 
 ## 6. 装饰器的展开规则
 
@@ -148,8 +136,6 @@ ApiBearerAuth('access-token')
 
 装饰器自动追加所有 `ClientExceptionCode` 和 `SystemExceptionCode` 值为基础错误码。手工声明的错误码不重复添加。
 
----
-
 ## 7. 消费层分工
 
 `@ApiRoute()` 只写入元数据，以下各层独立消费，职责不交叉：
@@ -157,13 +143,11 @@ ApiBearerAuth('access-token')
 | 消费层 | 读取的元数据键 | 职责 |
 |--------|-------------|------|
 | `AuthGuard` | `AUTH_STRATEGY_KEY` | 决定是否放行请求 |
-| `openapi-enricher`（文档生成阶段）| `ROUTE_ERRORS_KEY` + 已有 `ApiResponse` | 生成错误文档示例、包裹成功包络 |
+| `openapi-envelope`（文档生成阶段）| `ROUTE_ERRORS_KEY` + 已有 `ApiResponse` | 生成错误文档示例、包裹成功包络 |
 | 启动期校验器（可选扩展）| `ROUTE_ERRORS_KEY` | 验证声明的错误码均已在 `ErrorRegistry` 注册 |
 | 运行时追踪（可选扩展） | `ROUTE_ERRORS_KEY` | 在响应中附加路由契约版本，方便调试 |
 
 > `ResponseFormatInterceptor` 和 `AllExceptionsFilter` **不**消费路由元数据，它们处理的是运行时结果，与声明无关。
-
----
 
 ## 8. 与 `exception-system` 的集成点
 
@@ -180,13 +164,9 @@ ApiBearerAuth('access-token')
 
 当 `exception-system` 中新增错误码时，`@ApiRoute` 的 `errors` 字段可直接引用新增的错误码字符串。
 
----
-
-## 9. 向后兼容
+## 9. 迁移历史
 
 `@ApiRoute()` 装饰器已完成全项目迁移，所有路由统一使用 `auth: AUTH_STRATEGY_TYPE` 指定认证策略。旧有的 `@Public()` / `IS_PUBLIC_KEY` 兼容层已随迁移完成一并移除。
-
----
 
 ## 10. 目录结构
 
@@ -198,12 +178,3 @@ src/
         ├── route.decorator.ts   ← @ApiRoute + AUTH_STRATEGY_KEY + ROUTE_ERRORS_KEY
         └── index.ts             ← re-export 两者
 ```
-
----
-
-## 引用
-
-- [异常系统设计](exception-system.md)
-- [OpenAPI 自动富化](openapi-enrichment.md)
-- [请求生命周期](request-pipeline.md)
-- [认证模块](auth-module.md)

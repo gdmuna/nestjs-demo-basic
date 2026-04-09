@@ -1,21 +1,19 @@
 ---
 title: 认证模块
-inherits: docs/02-architecture/STANDARD.md
+inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.1"
 last-updated: 2026-04-06
 category: architecture
 related:
-  - docs/02-architecture/STANDARD.md
-  - docs/02-architecture/project-architecture-overview.md
-  - docs/02-architecture/request-pipeline.md
+  - docs/03-architecture/STANDARD.md
+  - docs/03-architecture/project-architecture-overview.md
+  - docs/03-architecture/request-pipeline.md
 ---
 
 # 认证模块
 
 `src/modules/auth/` 实现双令牌 JWT 认证，提供注册、登录、令牌刷新功能。
-
----
 
 ## 1. 模块结构
 
@@ -31,8 +29,6 @@ flowchart LR
     TS --> CFG["constants/auth.constant.ts\nJWT 密钥 + Cookie 配置"]
 ```
 
----
-
 ## 2. 双令牌策略
 
 | 属性 | Access Token | Refresh Token |
@@ -43,8 +39,6 @@ flowchart LR
 | Claims | `sub, jti(ULID), tokenType:'access', user{...}` | `sub, jti(ULID), tokenType:'refresh'` |
 
 **选择 ES256 的理由**：公钥可安全分发给第三方服务进行本地验证，无需共享签名密钥，支持密钥分离架构。ES256（ECDSA P-256）密钥更短、性能优于 RS256（RSA），HS256 共享密钥无法安全分发。
-
----
 
 ## 3. JWT Claims 结构
 
@@ -80,8 +74,6 @@ flowchart LR
 }
 ```
 
----
-
 ## 4. Refresh Token Cookie 配置
 
 Refresh Token 通过 HttpOnly Cookie 传输，防止 XSS 窃取。
@@ -96,8 +88,6 @@ Refresh Token 通过 HttpOnly Cookie 传输，防止 XSS 窃取。
 | 最大寿命 | 604800000ms（7 天）| `JWT_REFRESH_COOKIE_MAX_AGE_MS` |
 
 > 生产环境必须设置 `JWT_REFRESH_COOKIE_SECURE=true`。
-
----
 
 ## 5. 令牌生命周期
 
@@ -115,8 +105,6 @@ stateDiagram-v2
     Rotated --> [*] : 旧令牌失效，新令牌对签发
 ```
 
----
-
 ## 6. API 端点
 
 | 方法 | 路径 | 权限 | 请求体 | 响应 |
@@ -127,8 +115,6 @@ stateDiagram-v2
 | `GET` | `/auth/clear-cookie` | `@Public` | — | 清除 `refresh_token` Cookie |
 
 `account` 字段同时接受 `username` 或 `email`，后端自动判断。
-
----
 
 ## 7. 令牌刷新流程
 
@@ -150,16 +136,12 @@ flowchart TD
     J & K --> L["返回 200 { accessToken }"]
 ```
 
----
-
 ## 8. 密码处理
 
 - 加密库：bcryptjs
 - 加密成本：10 rounds（`bcrypt.hash(password, 10)`）
 - 验证：`bcrypt.compare(inputPassword, storedPasswordHash)`
 - 存储字段：`passwordHash`（不在任何响应体或 JWT Claims 中暴露）
-
----
 
 ## 9. 密钥配置
 
@@ -173,11 +155,3 @@ flowchart TD
 | `JWT_REFRESH_PUBLIC_KEY` | Refresh Token 验证公钥（EC PEM）|
 | `JWT_ACCESS_EXPIRES_IN` | Access Token 过期（默认 `'15m'`）|
 | `JWT_REFRESH_EXPIRES_IN` | Refresh Token 过期（默认 `'7d'`）|
-
----
-
-## 引用
-
-- [架构设计规范](STANDARD.md)
-- [项目架构全览](project-architecture-overview.md)
-- [请求处理链路](request-pipeline.md)

@@ -68,12 +68,12 @@
 
 - **`fix(scripts)`**：修复 `scripts/validate-release-version.cjs` 版本前缀提取正则由 `release-X.Y` 改为 `release/X.Y` 格式，消除版本验证始终抛出异常的问题
 
-- **`fix(docs)`**：修复 `docs/04-planning/pr-0.7.0.md` frontmatter `head: dev` 与 VitePress 保留字段冲突导致 `head.find is not a function` 错误，将字段重命名为 `branch: dev`
+- **`fix(docs)`**：修复 `docs/05-releases/pr-0.7.0.md` frontmatter `head: dev` 与 VitePress 保留字段冲突导致 `head.find is not a function` 错误，将字段重命名为 `branch: dev`
 
 ### 📚 文档
 
 - **`docs`**：所有架构文档同步至 v0.7.1，完全对齐 v0.7.0 + v0.7.1 实现
-  - 所有 `docs/02-architecture/` 文档升至 v0.7.1，frontmatter 和内容完全对齐实现
+  - 所有 `docs/03-architecture/` 文档升至 v0.7.1，frontmatter 和内容完全对齐实现
   - **auth-module.md**：修复 Mermaid 中 TokenService JWT 算法表示（RS256 → ES256）
   - **project-architecture-overview.md**：更新技术栈版本（Node.js ≥22、PostgreSQL ≥18）、Mermaid 控制器引用（ErrorCatalogController → ExceptionCatalogController）、Header 版本字段
   - **contributing.md**：更新分支命名约定（`release-X.Y` → `release/X.Y`）；重写 CI/CD 触发条件表（移除已删除工作流 `ci-cd-dev.yaml`、`release-snapshot.yaml` 等；修正触发规范）

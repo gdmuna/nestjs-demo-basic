@@ -2,23 +2,23 @@
 title: 架构设计规范与约束
 inherits: docs/STANDARD.md
 status: active
-version: "0.5.3"
-last-updated: 2026-03-26
+version: "0.7.4"
+last-updated: 2026-04-09
 category: standard
 related:
   - docs/STANDARD.md
   - docs/AGENTS.md
-  - docs/02-architecture/project-architecture-overview.md
-  - docs/02-architecture/request-pipeline.md
-  - docs/02-architecture/auth-module.md
-  - docs/02-architecture/database.md
-  - docs/02-architecture/observability.md
-  - docs/02-architecture/cicd-deployment.md
+  - docs/03-architecture/project-architecture-overview.md
+  - docs/03-architecture/request-pipeline.md
+  - docs/03-architecture/auth-module.md
+  - docs/03-architecture/database.md
+  - docs/03-architecture/observability.md
+  - docs/03-architecture/cicd-deployment.md
 ---
 
 # 架构设计规范与约束
 
-本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/02-architecture/` 目录的设计基准：
+本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/03-architecture/` 目录的设计基准：
 
 - **架构约束**：分层规则、模块依赖方向、禁止事项
 - **文档规范**：子文档职责边界、图示要求、维护责任
@@ -84,7 +84,7 @@ common/       ──→  constants/
 - 禁止 Controller 直接调用 `DatabaseService`（跨层）
 - 禁止多处硬编码相同阈值或配置值，使用 `src/constants/` 集中定义
 - 禁止 Service 中构造 HTTP 响应对象（保持 HTTP 层无关性）
-- 禁止直接 `throw new Error()`，必须通过 `BusinessException` + 错误码目录
+- 禁止直接 `throw new Error()`，必须通过 `@RegisterException` 注册的叶节点异常类抛出
 - 禁止 `infra/` 引入 `modules/` 的任何类
 
 ### 依赖注入规则
@@ -101,7 +101,7 @@ common/       ──→  constants/
 
 ## 3. 主从节点文档模型
 
-`docs/02-architecture/` 采用主从节点组织模式：
+`docs/03-architecture/` 采用主从节点组织模式：
 
 ```
 project-architecture-overview.md  ← 主节点（系统全貌，导航中心）

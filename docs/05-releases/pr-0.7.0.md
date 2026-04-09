@@ -1,4 +1,4 @@
----
+﻿---
 title: "发布 PR：v0.7.0"
 version: "0.7.0"
 base: main
@@ -12,8 +12,6 @@ date: 2026-04-06
 
 本 PR 将 `dev` 分支合并至 `main`，发布 v0.7.0 版本。自上次发布 v0.6.1 以来经历两个增量里程碑（v0.6.2 和 v0.7.0），涵盖异常系统、配置架构、CI/CD 流水线和 API 文档基础设施的全面重构。
 
----
-
 ## 变更内容
 
 ### ⚠️ 破坏性变更
@@ -21,8 +19,6 @@ date: 2026-04-06
 - **`BusinessException` 已删除** — 被基于装饰器的异常体系（`@RegisterException` + `ClientException` / `SystemException`）替代。所有实例化 `BusinessException` 的代码必须迁移至新模式
 - **`config/` 目录已移除** — 所有 `registerAs` 工厂函数和 Zod 验证 schema 已整合至 `src/constants/`。来自 `@root/config/*` 的导入不再生效
 - **`RequestContextService` 重命名为 `AlsService`** — 已迁移至 `src/infra/als/`。所有消费者必须更新其注入令牌
-
----
 
 ### ✨ 新功能
 
@@ -54,8 +50,6 @@ date: 2026-04-06
 - **`feat(config)`** — `NODE_ENV`、`APP_AUTHOR`、`IS_DEV/IS_TEST/IS_PROD`、`GIT_COMMIT` 标志暴露为 `app.constant.ts` 中的类型化常量
 - **`feat(docker)`** — `docker-compose.yml` 服务编排，包含重命名的服务（`database` / `backend`）、健康检查和 `SHADOW_DATABASE_URL` 支持
 
----
-
 ### ♻️ 重构
 
 | 提交 | 范围 | 描述 |
@@ -70,8 +64,6 @@ date: 2026-04-06
 | `663fba1` | `src` | 迁移 `CorsMiddleware`、`TimeoutInterceptor`、`ThrottlerModule` 以从 `ConfigService` 读取；添加 `http.constant.ts` |
 | `02fca4c` | `auth` | 重命名内部 `ALGORITHMS` 常量 |
 
----
-
 ### 🐛  缺陷修复
 
 | 提交 | 描述 |
@@ -81,8 +73,6 @@ date: 2026-04-06
 | `287771f` / `5b90210` / `ab772f0` | Shadow DB URL 与主 DB URL 相同导致 Prisma 迁移失败；现在在所有三条流水线中创建独立的 `nestjs_demo_basic_shadow` / `nestjs_cd_export_shadow` DB |
 | `a5aeb65` | `env:encrypt/decrypt` 脚本中 dotenvx CLI 标志组合错误 |
 
----
-
 ### 🔧 构建 / 工具链
 
 - **CI 中的 dotenvx** — CI 测试 job 通过 dotenvx 解密 `.env.test`；移除对 GitHub Actions 明文 secret 的依赖
@@ -91,8 +81,6 @@ date: 2026-04-06
 - **Docker**（`fdd58bd`）— Dockerfile 中 Node.js 22.22；runner 阶段集成 dotenvx；更新健康检查间隔
 - **锁文件追踪**（`1f76718`）— `pnpm-lock.yaml` 现已纳入 git 追踪；ESLint 忽略规则与工作区配置同步
 - **脚本清理**（`04d2464`）— 移除 `deploy-server.sh`、`validate-version.cjs`、`generate-snapshot-info.cjs`
-
----
 
 ## 变更的文件（关键路径）
 
@@ -127,8 +115,6 @@ src/
 website/                                    ← 新增 VitePress 子包
 scripts/generate-openapi.ts                 ← 新增
 ```
-
----
 
 ## 测试
 

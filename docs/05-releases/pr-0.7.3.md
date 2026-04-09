@@ -12,8 +12,6 @@ date: 2026-04-07
 
 本 PR 将 `release/0.7` 分支合并至 `main`，发布 v0.7.3 版本。主要内容：文档站 Docker 配置拆分为 dev/prod 两套；prod 镜像内嵌 Scalar API Reference；VitePress 开发配置改用环境变量注入；CI/CD 同步更新（cd-dev 新增 Apifox 同步 Job，cd-prod 移除）；环境变量文件重新加密；修复 cd-prod OpenAPI 导出容器启动问题。
 
----
-
 ## 变更内容
 
 ### ✨ 新功能 / 改进
@@ -74,8 +72,6 @@ date: 2026-04-07
 
 - **`chore(env)`**：重新加密 `.env.development`、`.env.production`、`.env.test`，新增 `VITE_API_DOCS_PORT` 条目
 
----
-
 ## 文件变更
 
 ```
@@ -111,8 +107,6 @@ website/
     index.html          ← 删除
 ```
 
----
-
 ## 测试
 
 - `pnpm lint` — 零错误
@@ -125,5 +119,5 @@ website/
 - [x] `pnpm build` — 编译通过
 - [x] 无核心逻辑变更，无需测试
 - [x] CHANGELOG 已更新（`CHANGELOG.md`）
-- [x] Roadmap 已更新（`docs/04-planning/roadmap.md`）
+- [x] Roadmap 已更新（`docs/05-releases/roadmap.md`）
 - [x] 无 API 接口变更，无需更新 Swagger 注解

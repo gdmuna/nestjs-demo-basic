@@ -1,21 +1,19 @@
 ---
 title: 可观测性
-inherits: docs/02-architecture/STANDARD.md
+inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.1"
 last-updated: 2026-04-06
 category: architecture
 related:
-  - docs/02-architecture/STANDARD.md
-  - docs/02-architecture/project-architecture-overview.md
-  - docs/02-architecture/database.md
+  - docs/03-architecture/STANDARD.md
+  - docs/03-architecture/project-architecture-overview.md
+  - docs/03-architecture/database.md
 ---
 
 # 可观测性
 
 日志、请求追踪与告警机制的协作方式。
-
----
 
 ## 1. 全链路概览
 
@@ -29,8 +27,6 @@ HTTP Request
   → 响应头 flx-request-id: req.id   [透传给客户端，便于端侧关联]
 ```
 
----
-
 ## 2. 日志基础设施
 
 | 组件 | 说明 |
@@ -39,8 +35,6 @@ HTTP Request
 | NestJS 集成 | nestjs-pino + pino-http |
 | 开发环境 | pino-pretty（彩色格式化 console 输出）|
 | 生产环境 | 写入 `logs/app.log`（JSON Lines 格式）|
-
----
 
 ## 3. 请求链路追踪
 
@@ -66,8 +60,6 @@ sequenceDiagram
     PI->>C: 响应头 flx-request-id: req.id
 ```
 
----
-
 ## 4. AlsService
 
 `AsyncLocalStorage` 的类型化封装，提供请求级别的隔离上下文。
@@ -89,8 +81,6 @@ sequenceDiagram
 
 调用 `get()` 时若上下文不存在（非 HTTP 上下文，如定时任务），返回 `undefined`，调用方需自行处理。
 
----
-
 ## 5. 告警阈值
 
 所有阈值在 `src/constants/observability.constant.ts` 中定义，可通过环境变量覆盖：
@@ -99,8 +89,6 @@ sequenceDiagram
 |------|----------|-----------|---------|
 | HTTP 请求耗时 | ≥ 1000ms | ≥ 3000ms | `SLOW_REQUEST_WARN_MS`, `SLOW_REQUEST_ERROR_MS` |
 | 数据库查询耗时 | ≥ 100ms | ≥ 500ms | `SLOW_QUERY_WARN_MS`, `SLOW_QUERY_ERROR_MS` |
-
----
 
 ## 6. 日志分级规则
 
@@ -121,8 +109,6 @@ sequenceDiagram
 | `SLOW_QUERY_WARN_MS` ≤ 耗时 < `SLOW_QUERY_ERROR_MS`（100–500ms）| `warn` |
 | 耗时 < 100ms | `debug` |
 
----
-
 ## 7. 日志字段参考
 
 pino-http 自动注入或手动记录时的通用字段：
@@ -135,11 +121,3 @@ pino-http 自动注入或手动记录时的通用字段：
 | `context` | NestJS logger | 日志来源模块名（如 `AuthService`）|
 | `requestId` | RequestContext | 链路追踪 ID（同 `req.id`）|
 | `version` | RequestContext | 应用版本号 |
-
----
-
-## 引用
-
-- [架构设计规范](STANDARD.md)
-- [项目架构全览](project-architecture-overview.md)
-- [数据库](database.md)
