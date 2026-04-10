@@ -1,12 +1,12 @@
 ---
-title: 快速上手
+title: 快速开始
 status: active
 version: "0.7.4"
 last-updated: 2026-04-09
 category: guide
 ---
 
-# 快速上手
+# 快速开始
 
 这篇指南帮你在 5 分钟内把项目跑起来。如果你需要更完整的环境配置说明，可以看[环境搭建](../01-guides/environment-setup)。
 
@@ -152,11 +152,12 @@ pnpm docs:dev           # 启动文档开发服务器
 pnpm docs:build         # 构建文档站静态文件
 ```
 
-## 接下来
+## 接下来做什么？
 
 项目跑起来了！根据你的目标选择下一步：
 
 - 🔨 **想开始开发**：[开发工作流](../01-guides/development-workflow)
+- 🔧 **需要搭建完整环境**：[环境搭建](../01-guides/environment-setup)
 - 🧪 **想跑测试**：[测试指南](../01-guides/testing)
 - 🏗️ **想了解架构**：[项目架构全览](../03-architecture/project-architecture-overview)
 - 🤔 **想理解设计思路**：[核心理念](./philosophy)

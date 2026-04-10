@@ -1,5 +1,5 @@
 ---
-title: OpenAPI 自动富化设计
+title: OpenAPI 增强
 inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.4"
@@ -12,7 +12,7 @@ related:
   - docs/03-architecture/request-pipeline.md
 ---
 
-# OpenAPI 自动富化设计
+# OpenAPI 增强
 
 本文档描述 `openapi-envelope` 的完整设计，涵盖富化流水线、成功/失败响应 Schema 自动注入、错误示例构造规范，以及与 `@ApiRoute` 的协作边界。
 

@@ -1,5 +1,5 @@
 ---
-title: 异常系统设计
+title: 异常系统
 inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.4"
@@ -12,7 +12,7 @@ related:
   - docs/03-architecture/database.md
 ---
 
-# 异常系统设计
+# 异常系统
 
 本文档描述异常系统的完整设计，涵盖异常类层级、错误码体系、`Result<T, E>` 类型契约、装饰器注册机制，以及服务层到控制层的错误传递流程。
 

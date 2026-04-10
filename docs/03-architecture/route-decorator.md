@@ -1,5 +1,5 @@
 ---
-title: 路由契约装饰器设计
+title: 路由装饰器
 inherits: docs/03-architecture/STANDARD.md
 status: active
 version: "0.7.4"
@@ -13,7 +13,7 @@ related:
   - docs/03-architecture/auth-module.md
 ---
 
-# 路由契约装饰器设计
+# 路由装饰器
 
 本文档描述 `@ApiRoute()` 复合装饰器的完整设计，涵盖元数据键体系、认证策略声明、错误码绑定，以及行为消费层分工。
 
