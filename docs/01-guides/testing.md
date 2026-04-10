@@ -169,7 +169,7 @@ describe('Auth (e2e)', () => {
                 .send({ username: 'user3', email: 'dup@example.com', password: 'Password123!' });
 
             expect(res.status).toBe(409);
-            expect(res.body.code).toBe('AUTH_DUPLICATE_USER');
+            expect(res.body.code).toBe('AUTH_USER_DUPLICATE');
         });
     });
 });
