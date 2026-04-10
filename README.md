@@ -22,8 +22,8 @@ NestJS 后端开发基线模板，提供认证系统（JWT ES256 双令牌）、
 
 | 文档站 | 说明 |
 |--------|------|
-| [文档站（main 分支）](<!-- 请填写 main 分支文档站链接 -->) | 跟踪 `main` 分支（最新稳定版） |
-| [文档站（dev 分支）](<!-- 请填写 dev 分支文档站链接 -->) | 跟踪 `dev` 分支（最新开发版） |
+| [文档站（main 分支）](https://docs.nestjs-scaffold.apps.gdmuna.com/main) | 跟踪 `main` 分支（最新稳定版） |
+| [文档站（dev 分支）](http://docs.nestjs-scaffold.apps.gdmuna.com/dev) | 跟踪 `dev` 分支（最新开发版） |
 
 ## 文档
 
@@ -32,44 +32,6 @@ NestJS 后端开发基线模板，提供认证系统（JWT ES256 双令牌）、
 - **[快速上手](docs/00-getting-started/quick-start.md)** — 5 分钟将项目跑起来
 - **[项目简介](docs/00-getting-started/introduction.md)** — 了解架构设计和核心特性
 - **[环境搭建](docs/01-guides/environment-setup.md)** — 完整的本地开发环境配置
-
-## 快速开始
-
-```bash
-# 1. 克隆项目并安装依赖
-git clone https://github.com/gdmuna/nestjs-demo-basic.git && cd nestjs-demo-basic
-pnpm install
-
-# 2. 配置环境变量（将 .env.keys 放置到项目根目录）
-
-# 3. 初始化数据库
-pnpm db:gen-client && pnpm db:migrate
-
-# 4. 启动开发服务器
-pnpm start:dev
-```
-
-健康检查：`curl http://localhost:3000/health`
-
-## 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `pnpm start:dev` | 热重载开发服务器 |
-| `pnpm build` | 编译（tsc + tsc-alias）|
-| `pnpm test` | 单元测试 + E2E 测试 |
-| `pnpm lint:fix` | ESLint 自动修复 |
-| `pnpm db:migrate` | 数据库迁移 |
-| `pnpm db:gen-client` | 重新生成 Prisma Client |
-| `pnpm docs:dev` | 启动文档站开发服务器 |
-
-## 依赖
-
-| 依赖 | 版本要求 |
-|------|---------|
-| Node.js | ≥ 22.0.0 |
-| pnpm | ≥ 8.0.0 |
-| PostgreSQL | ≥ 18 |
 
 ## License
 
