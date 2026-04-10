@@ -85,7 +85,12 @@ date: 2026-04-09
 - **`fix(docs)`**：修复 `external-resources.md` 重复节标题
 - **`docs(readme)`**：补全文档站访问链接；精简 README，移除与文档站重复的章节
 
-### 🔧 杂项 / 工程化
+### � 文档重构（后续增补）
+
+- **`refactor(docs)`**：`docs/04-reference/` 重命名为 `docs/04-appendix/`，与实际定位（附录）一致；同步更新 VitePress rewrites 规则、脚本输出路径、常量默认值及所有文档内引用
+- **`docs(harness)`**：`docs/02-harness/overview.md` 末尾新增局限性说明块，诚实披露当前实现与文档描述之间的差距
+
+### �🔧 杂项 / 工程化
 
 - **`chore`**：`AGENTS.md` 升至 v0.7.4
   - 路径引用更新（`docs/02-architecture/` → `docs/03-architecture/`）
@@ -158,6 +163,15 @@ website/Dockerfile.prod           ← 配置更新
 website/nginx.dev.conf            ← 配置更新
 website/nginx.prod.conf           ← 配置更新
 website/package.json              ← 新增 @mdit/plugin-tasklist
+
+# 后续增补（同 release/0.7 分支）
+docs/{04-reference → 04-appendix}/  ← 目录重命名，含 STANDARD.md 自引用更新
+scripts/generate-error-reference.ts ← 输出路径 04-reference → 04-appendix
+src/constants/observability.constant.ts ← ERROR_REFERENCE_URL 默认值路径更新
+docs/README.md                    ← 目录节标题 + 链接更新
+docs/STANDARD.md                  ← 树形图、分类表、索引表更新
+AGENTS.md                         ← 继承链树形图更新
+docs/02-harness/overview.md       ← 新增局限性说明块（:::warning）
 ```
 
 ## 测试验证

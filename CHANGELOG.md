@@ -79,6 +79,12 @@
 - **`fix(docs)`**：修复 `docs/04-reference/external-resources.md` 重复节标题
 - **`docs(readme)`**：补全文档站访问链接（main / dev 分支）；移除 README 中与文档站重复的快速开始、常用命令、依赖章节
 
+### 📁 文档重构（后续增补）
+
+- **`refactor(docs)`**：`docs/04-reference/` 目录重命名为 `docs/04-appendix/`，与目录实际定位（附录）一致
+  - 同步更新全部引用：`website/.vitepress/config.ts` rewrites 规则、`scripts/generate-error-reference.ts` 输出路径、`src/constants/observability.constant.ts` `ERROR_REFERENCE_URL` 默认值、`docs/README.md`、`docs/STANDARD.md`、`AGENTS.md`、`docs/04-appendix/STANDARD.md` 自引用
+- **`docs(harness)`**：`docs/02-harness/overview.md` 末尾新增 `:::warning` 说明块，诚实披露 Harness Engineering 当前实现局限（架构依赖检查尚未强制执行、推理型 AI 代码审查 Agent 未实现、突变测试等高级机制暂缺）
+
 ---
 
 ## [0.7.3] - 2026-04-07
