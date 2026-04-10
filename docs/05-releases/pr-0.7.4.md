@@ -89,6 +89,7 @@ date: 2026-04-09
 
 - **`refactor(docs)`**：`docs/04-reference/` 重命名为 `docs/04-appendix/`，与实际定位（附录）一致；同步更新 VitePress rewrites 规则、脚本输出路径、常量默认值及所有文档内引用
 - **`docs(harness)`**：`docs/02-harness/overview.md` 末尾新增局限性说明块，诚实披露当前实现与文档描述之间的差距
+- **`docs`**：`README.md` 与 `docs/00-getting-started/introduction.md` 新增"当前未发布正式版本"说明块，明确告知 v1.0.0 前接口契约不稳定，建议锁定到特定 commit 或 tag
 
 ### �🔧 杂项 / 工程化
 
