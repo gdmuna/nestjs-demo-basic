@@ -84,7 +84,7 @@
 - **`refactor(docs)`**：`docs/04-reference/` 目录重命名为 `docs/04-appendix/`，与目录实际定位（附录）一致
   - 同步更新全部引用：`website/.vitepress/config.ts` rewrites 规则、`scripts/generate-error-reference.ts` 输出路径、`src/constants/observability.constant.ts` `ERROR_REFERENCE_URL` 默认值、`docs/README.md`、`docs/STANDARD.md`、`AGENTS.md`、`docs/04-appendix/STANDARD.md` 自引用
 - **`docs(harness)`**：`docs/02-harness/overview.md` 末尾新增 `:::warning` 说明块，诚实披露 Harness Engineering 当前实现局限（架构依赖检查尚未强制执行、推理型 AI 代码审查 Agent 未实现、突变测试等高级机制暂缺）
-- **`docs`**：`README.md` 与 `docs/00-getting-started/introduction.md` 新增"当前未发布正式版本"说明，明确告知接口契约在 v1.0.0 前不保证向后兼容，建议锁定至特定 commit 或 tag 而非直接跟踪 `main` 分支
+- **`docs`**：`README.md` 与 `docs/00-getting-started/introduction.md` 新增“尚未发布首个稳定大版本”说明块，明确告知项目尚未发布 `1.0.0`（首个 Major 版本升级），接口契约在此之前不保证向后兼容，建议锁定至特定 commit 或 tag 而非直接跟踪 `main` 分支
 
 ---
 
