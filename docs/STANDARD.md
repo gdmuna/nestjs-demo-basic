@@ -11,7 +11,7 @@ related:
   - docs/01-guides/STANDARD.md
   - docs/02-harness/STANDARD.md
   - docs/03-architecture/STANDARD.md
-  - docs/04-reference/STANDARD.md
+  - docs/04-appendix/STANDARD.md
   - docs/05-releases/STANDARD.md
   - docs/06-audits/STANDARD.md
 ---
@@ -87,7 +87,7 @@ docs/
 │   └── STANDARD.md
 ├── 03-architecture/       # category: architecture
 │   └── STANDARD.md
-├── 04-reference/          # category: reference
+├── 04-appendix/          # category: reference
 │   └── STANDARD.md
 ├── 05-releases/           # category: release
 │   └── STANDARD.md
@@ -112,7 +112,7 @@ docs/
 | `01-guides/` | `guide` | "怎么做？" | 贡献者指南、工具使用教程 |
 | `02-harness/` | `harness` | "Harness Engineering 是什么？" | Harness Engineering 理念与实现 |
 | `03-architecture/` | `architecture` | "系统是什么样的？" | 架构全景、模块设计 |
-| `04-reference/` | `reference` | "接口/签名是什么？" | API 参考文档 |
+| `04-appendix/` | `reference` | "接口/签名是什么？" | API 参考文档 |
 | `05-releases/` | `release` | "内容变了什么？" | 发布说明 |
 | `06-audits/` | `audit` | "现在质量如何？" | 生产就绪度评审 |
 
@@ -248,7 +248,7 @@ overrides:                        # 覆盖父规范的规则（可选）
 | [01-guides/STANDARD.md](01-guides/STANDARD.md)             | 指南写作约束                |
 | [02-harness/STANDARD.md](02-harness/STANDARD.md)           | Harness Engineering 写作约束              |
 | [03-architecture/STANDARD.md](03-architecture/STANDARD.md) | 架构约束、模块依赖规则、架构子文档格式标准 |
-| [04-reference/STANDARD.md](04-reference/STANDARD.md)       | 参考文档格式标准              |
+| [04-appendix/STANDARD.md](04-appendix/STANDARD.md)       | 参考文档格式标准              |
 | [05-releases/STANDARD.md](05-releases/STANDARD.md)         | 发布说明约束                |
 | [06-audits/STANDARD.md](06-audits/STANDARD.md)             | 审计文档约束                |
 

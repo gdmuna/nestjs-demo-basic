@@ -23,19 +23,21 @@ export default defineConfig({
 
     cleanUrls: true,
 
-    head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/img/logo-small.svg' }]],
+    head: [
+        ['link', { rel: 'icon', type: 'image/svg+xml', href: '/img/gdmuna-logo_gradient-cut.png' }],
+    ],
 
     rewrites: {
         '00-getting-started/:page': 'guide/:page',
         '01-guides/:page': 'guide/:page',
         '02-harness/:page': 'reference/:page',
         '03-architecture/:page': 'reference/:page',
-        '04-reference/:page': 'guide/:page',
+        '04-appendix/:page': 'guide/:page',
         '05-releases/:page': 'guide/:page',
     },
 
     themeConfig: {
-        logo: '/img/logo-small.svg',
+        logo: '/img/gdmuna-logo_gradient-cut.png',
         nav: [
             { text: '首页', link: '/' },
             { text: '上手', link: '/guide/introduction', activeMatch: '/guide/' },

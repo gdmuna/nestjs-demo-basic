@@ -53,12 +53,12 @@ category: meta
 | [observability.md](03-architecture/observability.md) | active | 可观测性：Pino 日志、AsyncLocalStorage 链路追踪、告警阈值 |
 | [cicd-deployment.md](03-architecture/cicd-deployment.md) | active | CI/CD 与部署：Workflow 矩阵、自动打标、Docker 多阶段构建 |
 
-### 04-reference/ — 参考
+### 04-appendix/ —— 附录
 
 | 文档 | 状态 | 说明 |
 |------|------|------|
-| [error-reference.md](04-reference/error-reference.md) | active | 错误码参考（自动生成，勿手改） |
-| [external-resources.md](04-reference/external-resources.md) | active | 参考资源：API 文档入口、NestJS、Prisma、Zod、VitePress 官方文档链接 |
+| [error-reference.md](04-appendix/error-reference.md) | active | 错误码参考（自动生成，勿手改） |
+| [external-resources.md](04-appendix/external-resources.md) | active | 参考资源：API 文档入口、NestJS、Prisma、Zod、VitePress 官方文档链接 |
 
 ### 05-releases/ — 发布规划
 

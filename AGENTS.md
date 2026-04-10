@@ -303,8 +303,8 @@ AGENTS.md
     │   └── docs/02-harness/*.md
     ├── docs/03-architecture/STANDARD.md
     │   └── docs/03-architecture/*.md
-    ├── docs/04-reference/STANDARD.md
-    │   └── docs/04-reference/*.md
+    ├── docs/04-appendix/STANDARD.md
+    │   └── docs/04-appendix/*.md
     ├── docs/05-releases/STANDARD.md
     │   └── docs/05-releases/*.md
     └── docs/06-audits/STANDARD.md

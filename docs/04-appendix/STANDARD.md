@@ -9,7 +9,7 @@ category: standard
 
 # 参考文档规范
 
-本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/04-reference/` 目录的专项约束。
+本文档继承 [docs/STANDARD.md](../STANDARD.md)，定义 `docs/04-appendix/` 目录的专项约束。
 
 ---
 
