@@ -39,8 +39,6 @@ category: reference
 
 ## 框架与核心库
 
-## 框架与核心库
-
 | 资源 | 链接 | 说明 |
 |------|------|------|
 | **NestJS** | [docs.nestjs.com](https://docs.nestjs.com/) | 核心框架，模块/守卫/拦截器/管道/过滤器等 |
