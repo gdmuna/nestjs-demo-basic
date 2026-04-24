@@ -1,0 +1,483 @@
+import {
+    StorageUploadFailedException,
+    StorageDownloadFailedException,
+    StorageDeleteFailedException,
+    StorageObjectNotFoundException,
+    StorageMultipartInitFailedException,
+    StorageMultipartCompleteFailedException,
+    StorageMultipartAbortFailedException,
+} from './storage.exception.js';
+import { S3_OPTIONS } from './storage.constant.js';
+
+import { Logger } from '@/common/services/index.js';
+
+import { Inject, Injectable } from '@nestjs/common';
+import { Readable } from 'stream';
+
+import {
+    S3Client,
+    PutObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand,
+    DeleteObjectsCommand,
+    HeadObjectCommand,
+    CopyObjectCommand,
+    CreateMultipartUploadCommand,
+    CompleteMultipartUploadCommand,
+    AbortMultipartUploadCommand,
+    ListPartsCommand,
+    type CompletedPart,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Upload } from '@aws-sdk/lib-storage';
+
+/** 存储桶类型：public（CDN 公开访问）或 private（需鉴权） */
+export type BucketType = 'public' | 'private';
+
+/** 分片信息（CompleteMultipartUpload 时使用） */
+export type UploadPart = CompletedPart;
+
+/** 分片上传初始化结果 */
+export interface MultipartUploadInitResult {
+    uploadId: string;
+    key: string;
+    bucket: string;
+}
+
+/** 分片预签名 URL 信息 */
+export interface PartPresignResult {
+    partNumber: number;
+    url: string;
+}
+
+/** 已上传分片信息（用于断点续传） */
+export interface ListedPart {
+    partNumber: number;
+    etag: string;
+    size: number;
+}
+
+const DEFAULT_PRESIGN_EXPIRES = 3600; // 1小时
+const DEFAULT_PART_SIZE = 5 * 1024 * 1024; // 5MB
+
+@Injectable()
+export class StorageService {
+    private readonly logger = new Logger(StorageService.name);
+
+    constructor(
+        private readonly s3Client: S3Client,
+        @Inject(S3_OPTIONS) private readonly opts: StorageModuleOptions
+    ) {}
+
+    // ─── 存储桶解析 ────────────────────────────────────────────────────────────
+
+    /**
+     * 根据桶类型解析实际桶名
+     */
+    resolveBucket(type: BucketType): string {
+        return type === 'public' ? this.opts.options.bucketPublic : this.opts.options.bucketPrivate;
+    }
+
+    /**
+     * 拼接公开文件的直接访问 URL（不带签名，依赖 publicBaseUrl 或 endpoint）
+     */
+    getPublicUrl(key: string): string {
+        const base = this.opts.options.publicBaseUrl ?? this.opts.options.endpoint;
+        const bucket = this.opts.options.bucketPublic;
+        return `${base.replace(/\/$/, '')}/${bucket}/${key}`;
+    }
+
+    // ─── 预签名 URL ────────────────────────────────────────────────────────────
+
+    /**
+     * 生成上传预签名 URL（客户端直传）
+     * @param bucket 桶类型或实际桶名
+     * @param key 对象键
+     * @param contentType 文件 MIME 类型
+     * @param expiresIn 有效期（秒），默认 3600
+     */
+    async getUploadUrl(
+        bucket: BucketType | string,
+        key: string,
+        contentType: string,
+        expiresIn = DEFAULT_PRESIGN_EXPIRES
+    ): Promise<string> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        return getSignedUrl(
+            this.s3Client,
+            new PutObjectCommand({ Bucket: bucketName, Key: key, ContentType: contentType }),
+            { expiresIn }
+        );
+    }
+
+    /**
+     * 生成下载预签名 URL（私有文件访问/视频流播放）
+     * @param bucket 桶类型或实际桶名
+     * @param key 对象键
+     * @param expiresIn 有效期（秒），默认 3600
+     */
+    async getDownloadUrl(
+        bucket: BucketType | string,
+        key: string,
+        expiresIn = DEFAULT_PRESIGN_EXPIRES
+    ): Promise<string> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        return getSignedUrl(this.s3Client, new GetObjectCommand({ Bucket: bucketName, Key: key }), {
+            expiresIn,
+        });
+    }
+
+    // ─── 服务端直接操作 ────────────────────────────────────────────────────────
+
+    /**
+     * 服务端直接上传文件（小文件，< 5MB）
+     */
+    async putObject(
+        bucket: BucketType | string,
+        key: string,
+        body: Buffer | Uint8Array | string,
+        contentType?: string
+    ): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(
+                new PutObjectCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    Body: body,
+                    ContentType: contentType,
+                })
+            );
+            this.logger.log(`Object uploaded: ${bucketName}/${key}`);
+        } catch (err) {
+            this.logger.error({ bucket: bucketName, key, err }, 'Object upload failed');
+            throw new StorageUploadFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 服务端流式上传大文件（自动分片，支持进度回调）
+     * @param onProgress 可选进度回调 (loaded, total)
+     */
+    async uploadStream(
+        bucket: BucketType | string,
+        key: string,
+        body: Readable | Buffer,
+        contentType?: string,
+        onProgress?: (loaded: number, total?: number) => void
+    ): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            const upload = new Upload({
+                client: this.s3Client,
+                params: { Bucket: bucketName, Key: key, Body: body, ContentType: contentType },
+                queueSize: 4,
+                partSize: DEFAULT_PART_SIZE,
+                leavePartsOnError: false,
+            });
+
+            if (onProgress) {
+                upload.on('httpUploadProgress', (p) => onProgress(p.loaded ?? 0, p.total));
+            }
+
+            await upload.done();
+            this.logger.log(`Stream uploaded: ${bucketName}/${key}`);
+        } catch (err) {
+            this.logger.error({ bucket: bucketName, key, err }, 'Stream upload failed');
+            throw new StorageUploadFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 下载文件为 Buffer（小文件）
+     */
+    async getObject(bucket: BucketType | string, key: string): Promise<Buffer> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            const resp = await this.s3Client.send(
+                new GetObjectCommand({ Bucket: bucketName, Key: key })
+            );
+            const bytes = (await resp.Body?.transformToByteArray()) ?? new Uint8Array();
+            return Buffer.from(bytes);
+        } catch (err: any) {
+            if (err?.name === 'NoSuchKey') {
+                throw new StorageObjectNotFoundException({ cause: err });
+            }
+            this.logger.error({ bucket: bucketName, key, err }, 'Object download failed');
+            throw new StorageDownloadFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 获取文件可读流（大文件/视频代理场景）
+     */
+    async getObjectStream(bucket: BucketType | string, key: string): Promise<Readable> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            const resp = await this.s3Client.send(
+                new GetObjectCommand({ Bucket: bucketName, Key: key })
+            );
+            return resp.Body as unknown as Readable;
+        } catch (err: any) {
+            if (err?.name === 'NoSuchKey') {
+                throw new StorageObjectNotFoundException({ cause: err });
+            }
+            this.logger.error({ bucket: bucketName, key, err }, 'Object stream failed');
+            throw new StorageDownloadFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 删除单个文件
+     */
+    async deleteObject(bucket: BucketType | string, key: string): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
+            this.logger.log(`Object deleted: ${bucketName}/${key}`);
+        } catch (err) {
+            this.logger.error({ bucket: bucketName, key, err }, 'Object delete failed');
+            throw new StorageDeleteFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 批量删除文件（最多 1000 个）
+     */
+    async deleteObjects(bucket: BucketType | string, keys: string[]): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(
+                new DeleteObjectsCommand({
+                    Bucket: bucketName,
+                    Delete: { Objects: keys.map((Key) => ({ Key })) },
+                })
+            );
+            this.logger.log(`Batch deleted ${keys.length} objects from ${bucketName}`);
+        } catch (err) {
+            this.logger.error({ bucket: bucketName, keys, err }, 'Batch delete failed');
+            throw new StorageDeleteFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 检查文件是否存在（HEAD 请求，不传输文件内容）
+     */
+    async objectExists(bucket: BucketType | string, key: string): Promise<boolean> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(new HeadObjectCommand({ Bucket: bucketName, Key: key }));
+            return true;
+        } catch (err: any) {
+            if (err?.name === 'NotFound' || err?.$metadata?.httpStatusCode === 404) {
+                return false;
+            }
+            throw new StorageDownloadFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 服务端复制文件（桶内或跨桶，不消耗带宽）
+     */
+    async copyObject(
+        sourceBucket: BucketType | string,
+        sourceKey: string,
+        destBucket: BucketType | string,
+        destKey: string
+    ): Promise<void> {
+        const srcBucket =
+            sourceBucket === 'public' || sourceBucket === 'private'
+                ? this.resolveBucket(sourceBucket)
+                : sourceBucket;
+        const dstBucket =
+            destBucket === 'public' || destBucket === 'private'
+                ? this.resolveBucket(destBucket)
+                : destBucket;
+        try {
+            await this.s3Client.send(
+                new CopyObjectCommand({
+                    Bucket: dstBucket,
+                    Key: destKey,
+                    CopySource: `${srcBucket}/${sourceKey}`,
+                })
+            );
+            this.logger.log(`Object copied: ${srcBucket}/${sourceKey} → ${dstBucket}/${destKey}`);
+        } catch (err) {
+            this.logger.error(
+                { srcBucket, sourceKey, dstBucket, destKey, err },
+                'Object copy failed'
+            );
+            throw new StorageUploadFailedException({ cause: err });
+        }
+    }
+
+    // ─── 分片上传（客户端直传协调） ───────────────────────────────────────────
+
+    /**
+     * 初始化分片上传，返回 uploadId 和各分片预签名 URL
+     * @param partCount 分片总数
+     * @param expiresIn 每个分片 URL 的有效期（秒），默认 3600
+     */
+    async initMultipartUpload(
+        bucket: BucketType | string,
+        key: string,
+        contentType: string,
+        partCount: number,
+        expiresIn = DEFAULT_PRESIGN_EXPIRES
+    ): Promise<{ uploadId: string; partUrls: PartPresignResult[] }> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            const { UploadId } = await this.s3Client.send(
+                new CreateMultipartUploadCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    ContentType: contentType,
+                })
+            );
+
+            const partUrls = await Promise.all(
+                Array.from({ length: partCount }, (_, i) =>
+                    getSignedUrl(
+                        this.s3Client,
+                        new PutObjectCommand({
+                            Bucket: bucketName,
+                            Key: key,
+                            UploadId,
+                            PartNumber: i + 1,
+                        } as any),
+                        { expiresIn }
+                    ).then((url) => ({ partNumber: i + 1, url }))
+                )
+            );
+
+            this.logger.log(
+                `Multipart upload initiated: ${bucketName}/${key}, uploadId=${UploadId}`
+            );
+            return { uploadId: UploadId ?? '', partUrls };
+        } catch (err) {
+            this.logger.error({ bucket: bucketName, key, err }, 'Multipart upload init failed');
+            throw new StorageMultipartInitFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 为未完成的分片重新生成预签名 URL（断点续传场景）
+     * @param completedPartNumbers 已完成的分片编号列表
+     */
+    async getResumablePartUrls(
+        bucket: BucketType | string,
+        key: string,
+        uploadId: string,
+        totalParts: number,
+        completedPartNumbers: number[],
+        expiresIn = DEFAULT_PRESIGN_EXPIRES
+    ): Promise<{ completedParts: ListedPart[]; partUrls: PartPresignResult[] }> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+
+        // 从 S3 查询已完成的分片（权威来源）
+        const { Parts = [] } = await this.s3Client.send(
+            new ListPartsCommand({ Bucket: bucketName, Key: key, UploadId: uploadId })
+        );
+
+        const completedSet = new Set(Parts.map((p) => p.PartNumber ?? 0));
+        const remaining = Array.from({ length: totalParts }, (_, i) => i + 1).filter(
+            (n) => !completedSet.has(n)
+        );
+
+        const partUrls = await Promise.all(
+            remaining.map((partNumber) =>
+                getSignedUrl(
+                    this.s3Client,
+                    new PutObjectCommand({
+                        Bucket: bucketName,
+                        Key: key,
+                        UploadId: uploadId,
+                        PartNumber: partNumber,
+                    } as any),
+                    { expiresIn }
+                ).then((url) => ({ partNumber, url }))
+            )
+        );
+
+        return {
+            completedParts: Parts.map((p) => ({
+                partNumber: p.PartNumber ?? 0,
+                etag: p.ETag ?? '',
+                size: p.Size ?? 0,
+            })),
+            partUrls,
+        };
+    }
+
+    /**
+     * 完成分片上传（合并所有分片）
+     */
+    async completeMultipartUpload(
+        bucket: BucketType | string,
+        key: string,
+        uploadId: string,
+        parts: UploadPart[]
+    ): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(
+                new CompleteMultipartUploadCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    UploadId: uploadId,
+                    MultipartUpload: { Parts: parts },
+                })
+            );
+            this.logger.log(`Multipart upload completed: ${bucketName}/${key}`);
+        } catch (err) {
+            this.logger.error(
+                { bucket: bucketName, key, uploadId, err },
+                'Multipart upload complete failed'
+            );
+            throw new StorageMultipartCompleteFailedException({ cause: err });
+        }
+    }
+
+    /**
+     * 取消分片上传（清理 S3 上的临时分片，避免持续计费）
+     */
+    async abortMultipartUpload(
+        bucket: BucketType | string,
+        key: string,
+        uploadId: string
+    ): Promise<void> {
+        const bucketName =
+            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        try {
+            await this.s3Client.send(
+                new AbortMultipartUploadCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    UploadId: uploadId,
+                })
+            );
+            this.logger.log(`Multipart upload aborted: ${bucketName}/${key}, uploadId=${uploadId}`);
+        } catch (err) {
+            this.logger.error(
+                { bucket: bucketName, key, uploadId, err },
+                'Multipart upload abort failed'
+            );
+            throw new StorageMultipartAbortFailedException({ cause: err });
+        }
+    }
+}
+
+// 解决循环引用：在 Service 文件内本地引用类型
+import type { StorageModuleOptions } from './storage.interface.js';
