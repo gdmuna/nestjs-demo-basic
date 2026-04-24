@@ -63,13 +63,12 @@ COPY --from=builder /app/dist ./dist
 RUN <<EOF
 apt-get update -y
 apt-get install -y openssl curl
-curl -sfS https://dotenvx.sh/install.sh | sh
 rm -rf /var/lib/apt/lists/*
+chown -R node:node /app
 EOF
 
 # 切换到非 root 用户（node:22-slim 内置 node 用户 uid=1000）
 # chown 保证应用文件对 node 用户可读写
-RUN chown -R node:node /app
 USER node
 
 # 构建参数
