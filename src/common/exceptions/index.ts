@@ -6,6 +6,7 @@ export { default as SYS_EXCEPTION } from './system.exception.js';
 export * from './system.exception.js';
 
 import '@/infra/database/database.exception.js';
+import '@/infra/storage/storage.exception.js';
 
 import '@/modules/auth/auth.exception.js';
 import '@/modules/exception-catalog/exception-catalog.exception.js';
