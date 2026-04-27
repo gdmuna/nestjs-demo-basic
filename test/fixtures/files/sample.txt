@@ -1,0 +1,2 @@
+This is a sample plain-text fixture file used for testing file storage functionality.
+It is intentionally small (< 1 KB) to keep test runs fast.
