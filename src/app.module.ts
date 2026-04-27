@@ -12,7 +12,7 @@ import { AppController, TestController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AllExceptionFilter, ZodExceptionFilter, ThrottlerExceptionFilter } from './app.filter.js';
 
-import { ExceptionCatalogModule, AuthModule } from '@/modules/index.js';
+import { AuthModule, ExceptionCatalogModule, FileModule } from '@/modules/index.js';
 
 import allConfig, { AllConfig } from '@/constants/index.js';
 
@@ -88,7 +88,6 @@ import pino from 'pino';
             useFactory: (configService: ConfigService<AllConfig, true>) => {
                 const storageConfig = configService.get('storage', { infer: true });
                 return {
-                    storageProvider: 's3',
                     options: {
                         endpoint: storageConfig.endpoint,
                         region: storageConfig.region,
@@ -102,9 +101,10 @@ import pino from 'pino';
             },
         }),
         AlsModule,
+        AuthModule,
         DatabaseModule,
         ExceptionCatalogModule,
-        AuthModule,
+        FileModule,
     ],
     controllers: [AppController, TestController],
     providers: [

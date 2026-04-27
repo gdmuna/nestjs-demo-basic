@@ -1,0 +1,312 @@
+import { Injectable } from '@nestjs/common';
+import { StorageService } from '@/infra/storage/storage.service.js';
+import type { BucketType, UploadPart } from '@/infra/storage/storage.service.js';
+import {
+    PresignUploadDto,
+    MultipartInitDto,
+    PresignDownloadDto,
+    DeleteFilesDto,
+    CopyFileDto,
+    ResumablePartUrlsDto,
+    CompleteMultipartDto,
+    AbortMultipartDto,
+    ServerUploadDto,
+    ConfirmUploadDto,
+} from './file.dto.js';
+import { FileRepository } from './file.repository.js';
+import { AvatarStrategy } from './strategies/avatar.strategy.js';
+import { VideoStrategy } from './strategies/video.strategy.js';
+import { DocumentStrategy } from './strategies/document.strategy.js';
+import { FileInvalidDomainException, FileRecordNotFoundException } from './file.exception.js';
+import { PROXY_SIZE_THRESHOLD } from './file.constant.js';
+import type { FileDomain, UploadStrategy } from './file.interface.js';
+import type { FileModel } from '@root/prisma/generated/models/File.js';
+import type { Readable } from 'stream';
+
+@Injectable()
+export class FileService {
+    private readonly strategies: Record<FileDomain, UploadStrategy>;
+
+    constructor(
+        private readonly storageService: StorageService,
+        private readonly fileRepo: FileRepository,
+        private readonly avatarStrategy: AvatarStrategy,
+        private readonly documentStrategy: DocumentStrategy,
+        private readonly videoStrategy: VideoStrategy
+    ) {
+        this.strategies = {
+            avatar: this.avatarStrategy,
+            document: this.documentStrategy,
+            video: this.videoStrategy,
+        };
+    }
+
+    // ─── 预签名 URL ────────────────────────────────────────────────────────────
+
+    /**
+     * 获取上传预签名 URL（客户端直传）
+     * 在数据库中创建状态为 PENDING 的文件记录，返回预签名 URL 和 fileId。
+     * 客户端上传完成后需调用 confirmUpload 激活文件记录。
+     */
+    async getPresignedUploadUrl(
+        userId: string,
+        dto: PresignUploadDto
+    ): Promise<{ fileId: string; uploadUrl: string }> {
+        const strategy = this.resolveStrategy(dto.domain);
+        strategy.validate(dto);
+        const key = strategy.resolveKey(userId, dto.filename);
+        const bucket = strategy.getBucket() as BucketType;
+        const uploadUrl = await this.storageService.getUploadUrl(bucket, key, dto.contentType);
+        const record = await this.fileRepo.create({
+            userId,
+            domain: dto.domain,
+            bucket,
+            key,
+            filename: dto.filename,
+            contentType: dto.contentType,
+        });
+        return { fileId: record.id, uploadUrl };
+    }
+
+    /**
+     * 确认客户端上传已完成，将文件记录从 PENDING 激活为 ACTIVE
+     */
+    async confirmUpload(dto: ConfirmUploadDto): Promise<FileModel> {
+        const record = await this.requireFile(dto.fileId);
+        return this.fileRepo.updateStatus(record.id, 'ACTIVE');
+    }
+
+    /**
+     * 获取下载预签名 URL（私有文件访问）
+     */
+    async getPresignedDownloadUrl(dto: PresignDownloadDto): Promise<string> {
+        const record = await this.requireFile(dto.fileId);
+        return this.storageService.getDownloadUrl(record.bucket, record.key, dto.expiresIn);
+    }
+
+    /**
+     * 获取公开文件的直接访问 URL（不带签名，依赖 CDN / publicBaseUrl）
+     */
+    getPublicUrl(fileId: string): Promise<string> {
+        return this.requireFile(fileId).then((r) => this.storageService.getPublicUrl(r.key));
+    }
+
+    // ─── 服务端直接操作 ────────────────────────────────────────────────────────
+
+    /**
+     * 服务端直接上传文件（小文件，≤5MB）
+     * 创建并立即激活文件记录，返回 fileId。
+     */
+    async serverUpload(
+        userId: string,
+        dto: ServerUploadDto,
+        body: Buffer | Uint8Array,
+        contentType: string
+    ): Promise<{ fileId: string }> {
+        const strategy = this.resolveStrategy(dto.domain);
+        strategy.validate({ contentType });
+        const key = strategy.resolveKey(userId, dto.filename);
+        const bucket = strategy.getBucket() as BucketType;
+        await this.storageService.putObject(bucket, key, body, contentType);
+        const record = await this.fileRepo.create({
+            userId,
+            domain: dto.domain,
+            bucket,
+            key,
+            filename: dto.filename,
+            contentType,
+        });
+        await this.fileRepo.updateStatus(record.id, 'ACTIVE');
+        return { fileId: record.id };
+    }
+
+    /**
+     * 代理下载文件。
+     * 内部通过 HEAD 请求获取文件大小：
+     *   - ≤ PROXY_SIZE_THRESHOLD（5MB）→ Buffer（一次性读入内存，适合小文件）
+     *   - > PROXY_SIZE_THRESHOLD → Stream（流式传输，适合大文件/视频）
+     */
+    async proxyDownload(
+        fileId: string
+    ): Promise<{ data: Buffer | Readable; filename: string; isStream: boolean }> {
+        const record = await this.requireFile(fileId);
+        const size = await this.storageService.getObjectSize(record.bucket, record.key);
+        if (size <= PROXY_SIZE_THRESHOLD) {
+            const buffer = await this.storageService.getObject(record.bucket, record.key);
+            return { data: buffer, filename: record.filename, isStream: false };
+        }
+        const stream = await this.storageService.getObjectStream(record.bucket, record.key);
+        return { data: stream, filename: record.filename, isStream: true };
+    }
+
+    /**
+     * 检查文件是否存在于对象存储
+     */
+    async fileExists(fileId: string): Promise<boolean> {
+        const record = await this.requireFile(fileId);
+        return this.storageService.objectExists(record.bucket, record.key);
+    }
+
+    /**
+     * 删除文件（单个或批量）
+     * 从对象存储删除后，将数据库记录标记为 DELETED（软删除）。
+     */
+    async deleteFiles(dto: DeleteFilesDto): Promise<void> {
+        const records = await Promise.all(dto.fileIds.map((id) => this.requireFile(id)));
+
+        if (records.length === 1) {
+            await this.storageService.deleteObject(records[0].bucket, records[0].key);
+        } else {
+            // 同一 bucket 内批量删除（按 bucket 分组）
+            const byBucket = new Map<string, string[]>();
+            for (const r of records) {
+                const keys = byBucket.get(r.bucket) ?? [];
+                keys.push(r.key);
+                byBucket.set(r.bucket, keys);
+            }
+            await Promise.all(
+                [...byBucket.entries()].map(([bucket, keys]) =>
+                    this.storageService.deleteObjects(bucket, keys)
+                )
+            );
+        }
+
+        await this.fileRepo.softDeleteMany(dto.fileIds);
+    }
+
+    /**
+     * 服务端复制文件（桶内或跨桶，不消耗带宽）
+     * 在数据库中创建新的文件记录（ACTIVE），返回新 fileId。
+     */
+    async copyFile(userId: string, dto: CopyFileDto): Promise<{ fileId: string }> {
+        const src = await this.requireFile(dto.fileId);
+        const destStrategy = this.resolveStrategy(dto.destDomain);
+        const destFilename = dto.destFilename ?? src.filename;
+        const destKey = destStrategy.resolveKey(userId, destFilename);
+        const destBucket = destStrategy.getBucket() as BucketType;
+        await this.storageService.copyObject(src.bucket, src.key, destBucket, destKey);
+        const newRecord = await this.fileRepo.create({
+            userId,
+            domain: dto.destDomain,
+            bucket: destBucket,
+            key: destKey,
+            filename: destFilename,
+            contentType: src.contentType,
+        });
+        await this.fileRepo.updateStatus(newRecord.id, 'ACTIVE');
+        return { fileId: newRecord.id };
+    }
+
+    // ─── 分片上传 ──────────────────────────────────────────────────────────────
+
+    /**
+     * 初始化分片上传，返回 fileId、uploadId 和各分片预签名 URL
+     */
+    async initMultipartUpload(
+        userId: string,
+        dto: MultipartInitDto
+    ): Promise<{
+        fileId: string;
+        uploadId: string;
+        partUrls: { partNumber: number; url: string }[];
+    }> {
+        const strategy = this.resolveStrategy(dto.domain);
+        strategy.validate(dto);
+        const key = strategy.resolveKey(userId, dto.filename);
+        const bucket = strategy.getBucket() as BucketType;
+        const { uploadId, partUrls } = await this.storageService.initMultipartUpload(
+            bucket,
+            key,
+            dto.contentType,
+            dto.partCount
+        );
+        const record = await this.fileRepo.create({
+            userId,
+            domain: dto.domain,
+            bucket,
+            key,
+            filename: dto.filename,
+            contentType: dto.contentType,
+            uploadId,
+        });
+        return { fileId: record.id, uploadId, partUrls };
+    }
+
+    /**
+     * 获取断点续传分片预签名 URL
+     */
+    async resumeMultipartUpload(dto: ResumablePartUrlsDto) {
+        const record = await this.requireFile(dto.fileId);
+        if (!record.uploadId) {
+            throw new FileRecordNotFoundException({
+                message: `文件 ${dto.fileId} 没有关联的分片上传任务`,
+            });
+        }
+        return this.storageService.getResumablePartUrls(
+            record.bucket,
+            record.key,
+            record.uploadId,
+            dto.totalParts,
+            dto.completedPartNumbers,
+            dto.expiresIn
+        );
+    }
+
+    /**
+     * 完成分片上传（合并所有分片），激活文件记录
+     */
+    async completeMultipartUpload(dto: CompleteMultipartDto): Promise<void> {
+        const record = await this.requireFile(dto.fileId);
+        if (!record.uploadId) {
+            throw new FileRecordNotFoundException({
+                message: `文件 ${dto.fileId} 没有关联的分片上传任务`,
+            });
+        }
+        const parts: UploadPart[] = dto.parts.map((p) => ({
+            PartNumber: p.PartNumber,
+            ETag: p.ETag,
+        }));
+        await this.storageService.completeMultipartUpload(
+            record.bucket,
+            record.key,
+            record.uploadId,
+            parts
+        );
+        await this.fileRepo.updateStatus(record.id, 'ACTIVE', null);
+    }
+
+    /**
+     * 取消分片上传（清理临时分片），软删除文件记录
+     */
+    async abortMultipartUpload(dto: AbortMultipartDto): Promise<void> {
+        const record = await this.requireFile(dto.fileId);
+        if (record.uploadId) {
+            await this.storageService.abortMultipartUpload(
+                record.bucket,
+                record.key,
+                record.uploadId
+            );
+        }
+        await this.fileRepo.softDelete(record.id);
+    }
+
+    // ─── 内部工具 ──────────────────────────────────────────────────────────────
+
+    private resolveStrategy(domain: string): UploadStrategy {
+        const strategy = this.strategies[domain as FileDomain];
+        if (!strategy) {
+            throw new FileInvalidDomainException({
+                message: `不支持的文件领域: ${domain}，支持：${Object.keys(this.strategies).join(', ')}`,
+            });
+        }
+        return strategy;
+    }
+
+    private async requireFile(fileId: string): Promise<FileModel> {
+        const record = await this.fileRepo.findById(fileId);
+        if (!record) {
+            throw new FileRecordNotFoundException({ message: `文件 ${fileId} 不存在` });
+        }
+        return record;
+    }
+}

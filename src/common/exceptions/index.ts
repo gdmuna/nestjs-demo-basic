@@ -10,3 +10,4 @@ import '@/infra/storage/storage.exception.js';
 
 import '@/modules/auth/auth.exception.js';
 import '@/modules/exception-catalog/exception-catalog.exception.js';
+import '@/modules/file/file.exception.js';
