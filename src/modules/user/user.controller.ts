@@ -5,7 +5,7 @@ import { ApiRoute } from '@/common/decorators/index.js';
 
 import { Controller, Get, Patch, Body, Param, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 
 @Controller('users/me')
 @ApiTags('用户模块')
@@ -18,7 +18,7 @@ export class MeController {
         summary: '获取当前用户信息',
         description: '返回当前已认证用户的基本信息和账户详情。',
     })
-    getUserProfile(@Req() req: Request) {
+    getUserProfile(@Req() req: FastifyRequest) {
         return this.userService.getUserProfile(req.jwtClaim!.sub);
     }
 
@@ -28,7 +28,7 @@ export class MeController {
         summary: '更新当前用户信息',
         description: '允许用户更新自己的基本信息，如昵称、头像等。',
     })
-    updateUserProfile(@Req() req: Request, @Body() body: UpdateUserProfileDto) {
+    updateUserProfile(@Req() req: FastifyRequest, @Body() body: UpdateUserProfileDto) {
         return this.userService.updateUserProfile(req.jwtClaim!.sub, body);
     }
 }

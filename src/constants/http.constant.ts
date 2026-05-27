@@ -1,5 +1,5 @@
 import { registerAs, ConfigType } from '@nestjs/config';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // http
 

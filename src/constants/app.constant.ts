@@ -1,15 +1,18 @@
 import _package_info from '@root/package.json' with { type: 'json' };
 
 import { registerAs, ConfigType } from '@nestjs/config';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // app
 
-const _allowedEnvValue = ['development', 'test', 'production'] as const;
+const _allowedEnvValue = ['local', 'development', 'test', 'production'] as const;
 
-export const NODE_ENV = _allowedEnvValue.includes(process.env.NODE_ENV as any)
-    ? (process.env.NODE_ENV as (typeof _allowedEnvValue)[number])
-    : 'development';
+// export const NODE_ENV = _allowedEnvValue.includes(process.env.NODE_ENV as any)
+//     ? (process.env.NODE_ENV as (typeof _allowedEnvValue)[number])
+//     : 'development';
+
+export const NODE_ENV =
+    (process.env.NODE_ENV as (typeof _allowedEnvValue)[number]) || 'development';
 
 export const PORT = process.env.PORT || 3000;
 
@@ -23,6 +26,8 @@ export const APP_AUTHOR = process.env.APP_AUTHOR || PACKAGE_INFO.author || 'unkn
 
 export const GIT_COMMIT = process.env.GIT_COMMIT || 'N/A';
 
+export const IS_LOCAL = process.env.NODE_ENV === 'local';
+
 export const IS_DEV = process.env.NODE_ENV === 'development';
 
 export const IS_TEST = process.env.NODE_ENV === 'test';
@@ -31,7 +36,7 @@ export const IS_PROD = process.env.NODE_ENV === 'production';
 
 const AppConfigValidateSchema = z
     .object({
-        NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+        NODE_ENV: z.enum(_allowedEnvValue).default('development'),
         PORT: z.coerce.number().default(3000),
         APP_NAME: z.preprocess(
             (v) => v || undefined,
@@ -57,6 +62,7 @@ const AppConfigValidateSchema = z
         appName: env.APP_NAME,
         appVersion: env.APP_VERSION,
         gitCommit: env.GIT_COMMIT,
+        isLocal: env.NODE_ENV === 'local',
         isDev: env.NODE_ENV === 'development',
         isTest: env.NODE_ENV === 'test',
         isProd: env.NODE_ENV === 'production',

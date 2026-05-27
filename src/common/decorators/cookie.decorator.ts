@@ -2,8 +2,8 @@ import { ValidationFailedException } from '@/common/exceptions/client.exception.
 import type { FieldError } from '@/common/exceptions/client.exception.js';
 
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { z } from 'zod/v4';
-import type { Request } from 'express';
+import { z } from 'zod';
+import type { FastifyRequest } from 'fastify';
 
 type CookieSelector = { schema: z.ZodType } | z.ZodType | string | string[] | undefined;
 
@@ -24,7 +24,10 @@ type CookieSelector = { schema: z.ZodType } | z.ZodType | string | string[] | un
  * async handler(@Cookie() cookies: Record<string, string>) {}
  */
 export const Cookie = createParamDecorator((selector: CookieSelector, ctx: ExecutionContext) => {
-    const cookies = ctx.switchToHttp().getRequest<Request>().cookies as Record<string, string>;
+    const cookies = ctx.switchToHttp().getRequest<FastifyRequest>().cookies as Record<
+        string,
+        string
+    >;
 
     if (!selector) return cookies;
 

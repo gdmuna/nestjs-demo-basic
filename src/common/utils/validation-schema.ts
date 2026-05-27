@@ -3,7 +3,7 @@
  * 配合 nestjs-zod 一起使用。
  */
 
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 export const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

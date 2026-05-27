@@ -6,11 +6,15 @@ import { AppModule } from './app.module.js';
 
 import { Logger } from '@/common/services/index.js';
 
+import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import figlet from 'figlet';
 import { atlas } from 'gradient-string';
 import { Logger as pinoLogger } from 'nestjs-pino';
-import helmet from 'helmet';
+import fastifyHelmet from '@fastify/helmet';
+import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import {
@@ -18,36 +22,48 @@ import {
     enrichErrorResponses,
     enrichTagDescriptions,
 } from '@/common/utils/openapi-envelope.js';
-import cookieParser from 'cookie-parser';
-import { apiReference } from '@scalar/nestjs-api-reference';
+import { ulid } from 'ulid';
+import { apiReference as _apiReference } from '@scalar/nestjs-api-reference';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    const adapter = new FastifyAdapter({
+        genReqId: () => ulid(),
+        logger: false, // 由 nestjs-pino 处理日志
+    });
+    const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
+        bufferLogs: true,
+    });
     app.useLogger(app.get(pinoLogger));
     const logger = new Logger('Bootstrap');
 
-    app.use(
-        helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    baseUri: ["'self'"],
-                    fontSrc: ["'self'", 'https://fonts.scalar.com', 'data:'],
-                    formAction: ["'self'"],
-                    frameAncestors: ["'self'"],
-                    imgSrc: ["'self'", 'data:', 'https:'],
-                    objectSrc: ["'none'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-                    scriptSrcAttr: ["'none'"],
-                    styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
-                    upgradeInsecureRequests: [],
-                    connectSrc: ["'self'"],
-                },
+    await app.register(fastifyHelmet, {
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                baseUri: ["'self'"],
+                fontSrc: ["'self'", 'https://fonts.scalar.com', 'data:'],
+                formAction: ["'self'"],
+                frameAncestors: ["'self'"],
+                imgSrc: ["'self'", 'data:', 'https:'],
+                objectSrc: ["'none'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+                scriptSrcAttr: ["'none'"],
+                styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+                upgradeInsecureRequests: [],
+                connectSrc: ["'self'"],
             },
-        })
-    );
+        },
+    });
 
-    app.use(cookieParser());
+    await app.register(fastifyCookie);
+    await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+
+    app.setGlobalPrefix('api');
+
+    app.enableVersioning({
+        type: VersioningType.URI,
+        defaultVersion: '1',
+    });
 
     const apiDescription = `
 NestJS 后端基线模板 API，提供认证系统、健康检查和错误目录等基础能力。
@@ -99,25 +115,41 @@ NestJS 后端基线模板 API，提供认证系统、健康检查和错误目录
     );
     SwaggerModule.setup('api-doc', app, processedDoc);
 
-    app.use(
-        '/reference',
-        apiReference({
-            url: '/api-doc-json',
-            theme: 'elysiajs',
-            darkMode: true,
-            defaultOpenAllTags: true,
-            defaultHttpClient: {
-                targetKey: 'js',
-                clientKey: 'axios',
-            },
-            expandAllModelSections: true,
-            showDeveloperTools: 'never',
-            showOperationId: true,
-        })
-    );
+    // @scalar/nestjs-api-reference 是 Express 中间件（依赖 res.send），与 Fastify 不兼容。
+    // 改为通过 Fastify 原生实例注册路由，直接返回 Scalar HTML。
+    const scalarConfig = {
+        url: '/api-doc-json',
+        theme: 'elysiajs',
+        darkMode: true,
+        defaultOpenAllTags: true,
+        defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
+        expandAllModelSections: true,
+        showOperationId: true,
+    };
+    const fastifyInstance = app.getHttpAdapter().getInstance() as any;
+    fastifyInstance.get('/reference', (_req: unknown, reply: any) => {
+        reply.type('text/html').send(
+            `<!doctype html>
+<html lang="en">
+<head>
+  <title>API Reference</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>body { margin: 0 }</style>
+</head>
+<body>
+  <div id="api-reference" data-url="/api-doc-json"></div>
+  <script>
+    document.getElementById('api-reference').dataset.configuration = ${JSON.stringify(JSON.stringify(scalarConfig))};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`
+        );
+    });
 
     const port = parseInt(process.env.PORT ?? '3000');
-    await app.listen(port).catch(async (err) => {
+    await app.listen(port, '0.0.0.0').catch(async (err) => {
         if (err.code === 'EADDRINUSE') {
             logger.fatal(
                 `❌ 启动失败：端口 ${port} 已被占用。

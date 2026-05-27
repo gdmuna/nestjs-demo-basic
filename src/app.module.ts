@@ -1,7 +1,7 @@
 import {
-    CorsMiddleware,
     RequestPreprocessingMiddleware,
     RequestScopeMiddleware,
+    CorsMiddleware,
 } from './app.middleware.js';
 import {
     PerformanceInterceptor,
@@ -18,7 +18,7 @@ import allConfig, { AllConfig } from '@/constants/index.js';
 
 import { AlsModule, DatabaseModule, KvsModule, StorageModule } from '@/infra/index.js';
 
-import { Module, MiddlewareConsumer, NestModule, Global } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule, Global, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_PIPE, APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -50,16 +50,19 @@ import pino from 'pino';
         LoggerModule.forRootAsync({
             inject: [ConfigService],
             useFactory: (configService: ConfigService<AllConfig, true>) => {
-                const { isDev, isProd, appName } = configService.get('app', { infer: true });
+                const { isLocal, isDev, isProd, appName } = configService.get('app', {
+                    infer: true,
+                });
                 const { logLevel } = configService.get('observability', { infer: true });
                 return {
+                    forRoutes: [{ path: '*path', method: RequestMethod.ALL }],
                     pinoHttp: [
                         {
                             name: appName,
                             level: logLevel ?? (!isProd ? 'trace' : 'info'),
                             // prettier-ignore
                             transport:
-                            isDev ? {
+                            isDev || isLocal ? {
                                 target: 'pino-pretty',
                                 options: {
                                     sync: true,
@@ -75,7 +78,7 @@ import pino from 'pino';
                             autoLogging: false,
                         },
                         pino.destination({
-                            dest: './logs/app.log',
+                            dest: './data/logs/app.log',
                             sync: false, // 异步写入
                             mkdir: true,
                         }),
@@ -157,7 +160,7 @@ import pino from 'pino';
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
         consumer
-            .apply(RequestPreprocessingMiddleware, RequestScopeMiddleware, CorsMiddleware)
-            .forRoutes('*');
+            .apply(CorsMiddleware, RequestPreprocessingMiddleware, RequestScopeMiddleware)
+            .forRoutes('*path');
     }
 }

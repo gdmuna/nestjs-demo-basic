@@ -11,7 +11,7 @@ import { InvalidTokenException, MissingTokenException } from './auth.exception.j
 
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -21,7 +21,7 @@ export class AuthGuard implements CanActivate {
     ) {}
 
     canActivate(context: ExecutionContext) {
-        const request = context.switchToHttp().getRequest<Request>();
+        const request = context.switchToHttp().getRequest<FastifyRequest>();
 
         const authStrategy = this.reflector.getAllAndOverride<AUTH_STRATEGY_TYPE>(
             AUTH_STRATEGY_KEY,
@@ -61,7 +61,7 @@ export class RolesGuard implements CanActivate {
     constructor(private readonly reflector: Reflector) {}
 
     canActivate(context: ExecutionContext) {
-        const request = context.switchToHttp().getRequest<Request>();
+        const request = context.switchToHttp().getRequest<FastifyRequest>();
 
         const requiredRoles = this.reflector.getAllAndOverride<AUTH_ROLES_TYPE>(AUTH_ROLES_KEY, [
             context.getHandler(),

@@ -1,5 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { UserProfileSex } from '@root/prisma/generated/enums.js';
 import { v7 as uuidv7 } from 'uuid';
 

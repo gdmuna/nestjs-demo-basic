@@ -1,11 +1,25 @@
 packages:
   - 'website'
 
-onlyBuiltDependencies:
-  - '@nestjs/core'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - '@swc/core'
-  - esbuild
-  - prisma
-  - unrs-resolver
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@swc/core': true
+  esbuild: true
+  prisma: true
+
+peerDependencyRules:
+  allowedVersions:
+    '@docsearch/react>react': '19'
+    '@docsearch/react>react-dom': '19'
+    '@docsearch/react>@types/react': '19'
+
+# pnpm 10
+# onlyBuiltDependencies:
+#   - '@nestjs/core'
+#   - '@prisma/engines'
+#   - '@scarf/scarf'
+#   - '@swc/core'
+#   - esbuild
+#   - prisma
