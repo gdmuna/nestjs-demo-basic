@@ -4,7 +4,7 @@ services:
   # ─────────────────── PostgreSQL ───────────────────
   database:
     container_name: ${POSTGRES_CONTAINER_NAME:-database}
-    image: postgres:18
+    image: postgres:latest
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-nestjs}
@@ -14,6 +14,8 @@ services:
       POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_DB:-nestjs_demo_shadow}
     volumes:
       - postgres_data:/var/lib/postgresql
+      # 首次启动时自动创建 casdoor 数据库
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/01-init-casdoor-db.sql:ro
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     healthcheck:
@@ -25,44 +27,146 @@ services:
     networks:
       - app_network
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs-server
+    # security_opt:
+    #   - 'no-new-privileges:true'
+    user: '0'
+    ports:
+      - '9000:9000' # S3 API 对外端口
+      - '9001:9001' # 控制台对外端口
+    environment:
+      # 数据卷（多个路径用逗号分隔）
+      - RUSTFS_VOLUMES=/data/rustfs0
+      # API 和控制台监听地址
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      # CORS 设置，控制台与 S3 API 都放开来源
+      - RUSTFS_CORS_ALLOWED_ORIGINS=*
+      - RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS=*
+      # 访问密钥 — key 与 secret 禁止相同（RustFS 将相同值视为默认凭据并拒绝），生产环境请通过环境变量覆盖
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfs-access-key}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfs-secret-change-me}
+      # 日志级别
+      - RUSTFS_OBS_LOGGER_LEVEL=info
+
+    volumes:
+      - rustfs_data:/data/rustfs0
+      - ./deploy/rustfs/logs:/app/logs
+
+    networks:
+      - app_network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'sh',
+          '-c',
+          'curl -f http://localhost:9000/health && curl -f http://localhost:9001/health',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # ─────────────────── NestJS App ───────────────────
-  backend:
-    container_name: ${APP_CONTAINER_NAME:-backend}
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-        APP_NAME: ${APP_NAME:-nestjs-scaffold}
-        APP_VERSION: ${APP_VERSION:-latest}
+  # backend:
+  #   container_name: ${APP_CONTAINER_NAME:-backend}
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NODE_ENV: ${NODE_ENV:-development}
+  #       APP_NAME: ${APP_NAME:-nestjs-scaffold}
+  #       APP_VERSION: ${APP_VERSION:-latest}
+  #   restart: unless-stopped
+  #   depends_on:
+  #     database:
+  #       condition: service_healthy
+  #     rustfs:
+  #       condition: service_healthy
+  #     valkey:
+  #       condition: service_healthy
+  #     casdoor:
+  #       condition: service_healthy
+  #   environment:
+  #     NODE_ENV: ${NODE_ENV:-development}
+  #     # DATABASE_URL 需要指向 Compose 内部服务名，覆盖加密文件中的值
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-nestjs}:${POSTGRES_PASSWORD:-nestjs_password}@database:5432/${POSTGRES_DB:-nestjs_demo}?schema=public
+  #     SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-nestjs}:${POSTGRES_PASSWORD:-nestjs_password}@database:5432/${POSTGRES_DB:-nestjs_demo_shadow}?schema=public
+  #   volumes:
+  #     # .env.keys 提供 dotenvx 解密私钥，其余所有配置由解密后的 .env.{NODE_ENV} 文件注入
+  #     - type: bind
+  #       source: ./secrets/env/.env.keys
+  #       target: /app/secrets/env/.env.keys
+  #       read_only: true
+  #   ports:
+  #     - '${BACKEND_PORT:-3000}:3000'
+  #   healthcheck:
+  #     test: ['CMD-SHELL', 'curl --fail http://localhost:3000/api/v1/health']
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+  #   networks:
+  #     - app_network
+
+  # ─────────────────── Valkey (Redis 兼容 KV 缓存) ───────────────────
+  valkey:
+    image: valkey/valkey:latest
+    container_name: ${VALKEY_CONTAINER_NAME:-valkey}
+    restart: unless-stopped
+    command: valkey-server --save 60 1 --loglevel notice
+    ports:
+      - '${VALKEY_PORT:-6379}:6379'
+    environment:
+      - VALKEY_USER=nestjs
+      - VALKEY_PASSWORD=nestjs_password
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app_network
+
+  # ─────────────────── Casdoor (身份认证与授权) ───────────────────
+  casdoor:
+    image: casbin/casdoor:latest
+    container_name: ${CASDOOR_CONTAINER_NAME:-casdoor}
     restart: unless-stopped
     depends_on:
       database:
         condition: service_healthy
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      # DATABASE_URL 需要指向 Compose 内部服务名，覆盖加密文件中的值
-      DATABASE_URL: postgresql://${POSTGRES_USER:-nestjs}:${POSTGRES_PASSWORD:-nestjs_password}@database:5432/${POSTGRES_DB:-nestjs_demo}?schema=public
-      SHADOW_DATABASE_URL: postgresql://${POSTGRES_USER:-nestjs}:${POSTGRES_PASSWORD:-nestjs_password}@database:5432/${POSTGRES_DB:-nestjs_demo_shadow}?schema=public
-    volumes:
-      # .env.keys 提供 dotenvx 解密私钥，其余所有配置由解密后的 .env.{NODE_ENV} 文件注入
-      - type: bind
-        source: ./.env.keys
-        target: /app/.env.keys
-        read_only: true
     ports:
-      - '${BACKEND_PORT:-3000}:3000'
+      - '${CASDOOR_PORT:-8000}:8000'
+    environment:
+      - GIN_MODE=release
+    volumes:
+      # 需提前创建 config/casdoor/app.conf，参考：
+      # https://raw.githubusercontent.com/casdoor/casdoor/master/conf/app.conf
+      - ./config/casdoor:/conf
+      - casdoor_logs:/logs
     healthcheck:
-      test: ['CMD-SHELL', 'curl --fail http://backend:3000/health']
-      interval: 10s
+      test: ['CMD-SHELL', 'curl -f http://localhost:8000/ || exit 1']
+      interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     networks:
       - app_network
 
 volumes:
   postgres_data:
+  rustfs_data:
+  valkey_data:
+  casdoor_logs:
 
 networks:
   app_network:

@@ -1,16 +1,15 @@
 # ===== 构建阶段 =====
 FROM node:22.22-slim AS builder
 
-# 安装依赖和 OpenSSL (Prisma 需要)
-RUN <<EOF
-apt-get update -y
-apt-get install -y openssl
-rm -rf /var/lib/apt/lists/*
-npm install -g pnpm
-EOF
-
 # 设置工作目录
 WORKDIR /app
+
+# 替换为国内镜像源（阿里云），避免官方源在国内网络不稳定
+COPY config/apt/debian.sources /etc/apt/sources.list.d/debian.sources
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && npm install -g pnpm
 
 # 复制 package.json 和 pnpm 配置文件
 COPY package.json .npmrc ./
@@ -39,11 +38,9 @@ COPY config ./config
 ARG DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 ARG SHADOW_DATABASE_URL="postgresql://username:password@host:port/dbName?schema=public"
 
-RUN <<EOF
-pnpm prisma generate
-pnpm build
-pnpm prune --prod --ignore-scripts
-EOF
+RUN pnpm prisma generate \
+&& pnpm build \
+&& pnpm prune --prod --ignore-scripts
 
 # ===== 运行阶段 =====
 FROM node:22.22-slim AS runner
@@ -51,42 +48,39 @@ FROM node:22.22-slim AS runner
 # 设置工作目录（提前设置，方便后续 chown）
 WORKDIR /app
 
-COPY .env.* ./
-
 # 从构建阶段复制依赖
 COPY --from=builder /app/node_modules ./node_modules
 
 # 从构建阶段复制构建输出
 COPY --from=builder /app/dist ./dist
 
+COPY secrets/env/* ./secrets/env/
+
+COPY secrets/keys/* ./secrets/keys/
+
+# 替换为国内镜像源（阿里云），避免官方源在国内网络不稳定
+COPY config/apt/debian.sources /etc/apt/sources.list.d/debian.sources
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
 # 安装依赖和 OpenSSL (运行时 Prisma Client 可能需要)
-RUN <<EOF
-apt-get update -y
-apt-get install -y openssl curl
-rm -rf /var/lib/apt/lists/*
-chown -R node:node /app
-EOF
-
-# 切换到非 root 用户（node:22-slim 内置 node 用户 uid=1000）
-# chown 保证应用文件对 node 用户可读写
-USER node
-
-# 构建参数
-ARG APP_VERSION
-ARG APP_NAME
-ARG GIT_COMMIT
+RUN apt-get update \
+    && apt-get install -y openssl curl \
+    && curl -sfS https://dotenvx.sh/install.sh | sh \
+    && chown -R node:node /app \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 环境变量
-ENV APP_VERSION=$APP_VERSION
-ENV APP_NAME=$APP_NAME
-ENV GIT_COMMIT=$GIT_COMMIT
-ENV NODE_ENV=production
+ENV APP_VERSION='' \
+    APP_NAME='' \
+    GIT_COMMIT='' \
+    NODE_ENV=production
 
 EXPOSE 3000
 
 # 健康检查
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
-    CMD curl --fail http://localhost:3000/health
+    CMD curl --fail http://localhost:3000/api/v1/health
 
 # 启动应用
-CMD ["sh", "-c", "exec dotenvx run -f .env.${NODE_ENV} -- node dist/src/main.js"]
+CMD ["sh", "-c", "exec dotenvx run -f secrets/env/.env.${NODE_ENV} -- node dist/src/main.js"]
