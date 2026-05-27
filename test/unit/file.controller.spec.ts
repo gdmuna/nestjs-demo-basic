@@ -1,7 +1,6 @@
 import type { Mocked } from 'vitest';
 import { FileController } from '@/modules/file/file.controller.js';
 import { FileService } from '@/modules/file/file.service.js';
-import { NotFoundException } from '@nestjs/common';
 import { Readable } from 'stream';
 
 // ─── Mock FileService ─────────────────────────────────────────────────────────
@@ -134,22 +133,27 @@ describe('FileController (unit)', () => {
         it('should call serverUpload with file buffer and mimetype', async () => {
             const mockResult = { fileId: 'file_server' };
             mockFileService.serverUpload.mockResolvedValue(mockResult);
-            const file = {
-                buffer: Buffer.from('data'),
-                mimetype: 'image/jpeg',
-            } as Express.Multer.File;
 
-            const result = await controller.serverUpload(
-                file,
-                { domain: 'avatar', filename: 'photo.jpg' } as any,
-                mockRequest
-            );
+            const fileBuffer = Buffer.from('data');
+            async function* mockParts() {
+                yield {
+                    type: 'file' as const,
+                    fieldname: 'file',
+                    mimetype: 'image/jpeg',
+                    toBuffer: async () => fileBuffer,
+                };
+                yield { type: 'field' as const, fieldname: 'domain', value: 'AVATAR' };
+                yield { type: 'field' as const, fieldname: 'filename', value: 'photo.jpg' };
+            }
+            const req: any = { jwtClaim: { sub: 'u_1' }, parts: mockParts };
+
+            const result = await controller.serverUpload(req);
 
             expect(result).toBe(mockResult);
             expect(mockFileService.serverUpload).toHaveBeenCalledWith(
                 'u_1',
-                expect.objectContaining({ domain: 'avatar' }),
-                file.buffer,
+                expect.objectContaining({ domain: 'AVATAR' }),
+                fileBuffer,
                 'image/jpeg'
             );
         });
@@ -165,15 +169,12 @@ describe('FileController (unit)', () => {
                 filename: 'photo.jpg',
                 isStream: false,
             });
-            const mockRes: any = { setHeader: vi.fn() };
+            const mockRes: any = { header: vi.fn() };
 
             const result = await controller.proxyDownload('file_1', mockRes);
 
-            expect(mockRes.setHeader).toHaveBeenCalledWith(
-                'Content-Type',
-                'application/octet-stream'
-            );
-            expect(mockRes.setHeader).toHaveBeenCalledWith(
+            expect(mockRes.header).toHaveBeenCalledWith('Content-Type', 'application/octet-stream');
+            expect(mockRes.header).toHaveBeenCalledWith(
                 'Content-Disposition',
                 'attachment; filename="photo.jpg"'
             );
@@ -187,11 +188,11 @@ describe('FileController (unit)', () => {
                 filename: 'video.mp4',
                 isStream: true,
             });
-            const mockRes: any = { setHeader: vi.fn() };
+            const mockRes: any = { header: vi.fn() };
 
             const result = await controller.proxyDownload('file_1', mockRes);
 
-            expect(mockRes.setHeader).toHaveBeenCalledWith(
+            expect(mockRes.header).toHaveBeenCalledWith(
                 'Content-Disposition',
                 'attachment; filename="video.mp4"'
             );
