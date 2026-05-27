@@ -2,10 +2,13 @@
 
 GREEN="\033[32m"; YELLOW="\033[33m"; RESET="\033[0m"
 
-printf "%-12b  %b\n" "\n${GREEN}[GitHook]" "[LOG] 执行 Pre-commit hook...${RESET}"
+log()  { printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] $1${RESET}"; }
+warn() { printf "%-12b  %b\n" "${YELLOW}[GitHook]" "[WARN] $1${RESET}"; }
 
-# 记录已暂存的 env 文件（排除 .env.keys 和 .env.example）
-staged_env_files=$(git diff --cached --name-only -- ':.env.*' ':!.env.keys' ':!.env.example')
+log "执行 Pre-commit hook"
+
+# 记录已暂存的 env 文件（排除 .env.example）
+staged_env_files=$(git diff --cached --name-only -- ':**/.env.*' ':!**/.env.example')
 
 # 如果有暂存的 env 文件，先加密它们
 if [ -n "$staged_env_files" ]; then
@@ -15,18 +18,15 @@ if [ -n "$staged_env_files" ]; then
 fi
 
 if git diff --cached --quiet; then
-    printf "%-12b  %b\n" "${YELLOW}[GitHook]" "[WARN] 无暂存文件，跳出 Pre-commit hooks${RESET}"
+    warn "无暂存文件，跳出 Pre-commit hooks"
     exit 0
 fi
 
+log "执行 lint-staged"
+
 pnpm lint-staged
 
-staged_has_scripts=$(git diff --cached --name-only -- '*.js' '*.ts')
-if [ -z "$staged_has_scripts" ]; then
-    printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] 无暂存的 .js/.ts 文件，跳过测试${RESET}"
-else
-    pnpm test
-fi
+log "执行 lint-staged 完毕"
 
-printf "%-12b  %b\n" "${GREEN}[GitHook]" "[LOG] Pre-commit hooks 执行完毕${RESET}"
+log "Pre-commit hooks 执行完毕"
 exit 0

@@ -1,0 +1,25 @@
+#!/bin/sh
+
+GREEN="\033[32m"; YELLOW="\033[33m"; RESET="\033[0m"
+
+log()  { printf "%-12b %b\n" "${GREEN}[GitHook]" "[LOG] $1${RESET}"; }
+warn() { printf "%-12b %b\n" "${YELLOW}[GitHook]" "[WARN] $1${RESET}"; }
+
+log "执行 Pre-push hook"
+
+# 新分支无上游时回退到初始提交，避免漏测
+base=$(git rev-parse --verify @{u} 2>/dev/null || git rev-list --max-parents=0 HEAD)
+changed_backend=$(git diff --name-only "$base" HEAD | grep -E '\.(js|ts)$' | grep -v '^website/' || true)
+
+if [ -n "$changed_backend" ]; then
+    log "检测到后端变更，运行测试"
+    pnpm test
+else
+    log "无后端变更，跳过测试"
+fi
+
+log "Pre-push hooks 执行完毕"
+
+wsl bash -c "fortune|cowsay|lolcat" || true
+
+exit 0
