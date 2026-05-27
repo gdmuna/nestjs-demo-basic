@@ -1,5 +1,11 @@
 import { FileRepository } from './file.repository.js';
-import { DocumentStrategy, ImageStrategy, VideoStrategy } from './strategies/index.js';
+import {
+    DocumentStrategy,
+    ImageStrategy,
+    VideoStrategy,
+    BufferMultipartHandler,
+    FileMultipartHandler,
+} from './strategies/index.js';
 import {
     FileInvalidDomainException,
     FileRecordNotFoundException,
@@ -33,10 +39,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from '@nestjs/cache-manager';
 import type { Readable } from 'stream';
+import { createReadStream } from 'fs';
+import { unlink } from 'fs/promises';
+import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class FileService {
-    private readonly strategies: Record<FileDomain, UploadStrategy>;
+    private readonly strategies: Record<FileDomain, any>;
 
     constructor(
         private readonly storageService: StorageService,
@@ -167,26 +176,83 @@ export class FileService {
      */
     async serverUpload(
         userId: string,
-        dto: ServerUploadDto,
-        body: Buffer | Uint8Array,
-        contentType: string
-    ): Promise<{ fileId: string }> {
-        const strategy = this.resolveStrategy(dto.domain);
-        strategy.validate({ contentType });
-        const key = strategy.resolveKey(userId, dto.filename);
-        const bucket = strategy.getBucket() as BucketType;
-        await this.storageService.putObject(bucket, key, body, contentType);
-        const record = await this.fileRepo.create({
-            userId,
-            domain: dto.domain,
-            bucket,
-            key,
-            filename: dto.filename,
-            contentType,
-            visibility: bucket === 'public' ? FileVisibility.PUBLIC : FileVisibility.PRIVATE,
-        });
-        await this.fileRepo.updateStatus(record.id, 'ACTIVE');
-        return { fileId: record.id };
+        // dto: ServerUploadDto,
+        // body: Buffer | Uint8Array,
+        // contentType: string,
+        handler: BufferMultipartHandler | FileMultipartHandler
+    ): Promise<{ fileId: string }[]> {
+        const type = handler.type;
+        if (type === 'buffer') {
+            const files = handler.getFiles();
+            const metadata = handler.getMetadata();
+            const results = [];
+            for (const file of files) {
+                const id = uuidv7();
+                const key = `server-uploads/${id}`;
+                const bucket = this.storageService.resolveBucket(metadata.bucket);
+                await this.storageService.putObject(bucket, key, file.buffer, file.mimetype);
+
+                const record = await this.fileRepo.create({
+                    id,
+                    userId,
+                    domain: metadata.domain,
+                    visibility: metadata.visibility.toUpperCase(),
+                    bucket,
+                    key,
+                    filename: file.filename,
+                    contentType: file.mimetype,
+                    status: 'ACTIVE',
+                });
+                results.push({ fileId: record.id });
+            }
+            return results;
+        } else {
+            const files = handler.getFiles();
+            const metadata = handler.getMetadata();
+            const results = [];
+            for (const file of files) {
+                const id = uuidv7();
+                const key = `server-uploads/${id}`;
+                const bucket = this.storageService.resolveBucket(metadata.visibility);
+                const diskStream = createReadStream(file.filepath);
+                try {
+                    await this.storageService.uploadStream(bucket, key, diskStream, file.mimetype);
+                } finally {
+                    unlink(file.filepath).catch(() => void 0);
+                }
+
+                const record = await this.fileRepo.create({
+                    id,
+                    userId,
+                    domain: metadata.domain,
+                    visibility: metadata.visibility.toUpperCase(),
+                    bucket,
+                    key,
+                    filename: file.filename,
+                    contentType: file.mimetype,
+                    status: 'ACTIVE',
+                });
+                results.push({ fileId: record.id });
+            }
+            return results;
+        }
+
+        // const strategy = this.resolveStrategy(dto.domain);
+        // strategy.validate({ contentType });
+        // const key = strategy.resolveKey(userId, dto.filename);
+        // const bucket = strategy.getBucket() as BucketType;
+        // await this.storageService.uploadStream(bucket, key, body, contentType);
+        // const record = await this.fileRepo.create({
+        //     userId,
+        //     domain: dto.domain,
+        //     bucket,
+        //     key,
+        //     filename: dto.filename,
+        //     contentType,
+        //     visibility: bucket === 'public' ? FileVisibility.PUBLIC : FileVisibility.PRIVATE,
+        // });
+        // await this.fileRepo.updateStatus(record.id, 'ACTIVE');
+        // return { fileId: record.id };
     }
 
     /**
@@ -199,11 +265,11 @@ export class FileService {
         fileId: string
     ): Promise<{ data: Buffer | Readable; filename: string; isStream: boolean }> {
         const record = await this.requireFile(fileId);
-        const size = await this.storageService.getObjectSize(record.bucket, record.key);
-        if (size <= PROXY_SIZE_THRESHOLD) {
-            const buffer = await this.storageService.getObject(record.bucket, record.key);
-            return { data: buffer, filename: record.filename, isStream: false };
-        }
+        // const size = await this.storageService.getObjectSize(record.bucket, record.key);
+        // if (size <= PROXY_SIZE_THRESHOLD) {
+        //     const buffer = await this.storageService.getObject(record.bucket, record.key);
+        //     return { data: buffer, filename: record.filename, isStream: false };
+        // }
         const stream = await this.storageService.getObjectStream(record.bucket, record.key);
         return { data: stream, filename: record.filename, isStream: true };
     }
