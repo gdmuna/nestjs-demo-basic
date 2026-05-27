@@ -34,7 +34,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
 
 /** 存储桶类型：public（CDN 公开访问）或 private（需鉴权） */
-export type BucketType = 'public' | 'private';
+export type BucketType = 'staging' | 'public' | 'private';
 
 /** 分片信息（CompleteMultipartUpload 时使用） */
 export type UploadPart = CompletedPart;
@@ -69,15 +69,30 @@ export class StorageService {
     constructor(
         private readonly s3Client: S3Client,
         @Inject(S3_OPTIONS) private readonly opts: StorageModuleOptions
-    ) {}
+    ) {
+        this.bucketMap = {
+            staging: this.opts.options.bucketStaging,
+            public: this.opts.options.bucketPublic,
+            private: this.opts.options.bucketPrivate,
+        };
+    }
 
     // ─── 存储桶解析 ────────────────────────────────────────────────────────────
 
+    private bucketMap: Record<BucketType, string>;
+
     /**
-     * 根据桶类型解析实际桶名
+     * 根据文件可见性解析实际桶名
+     * 当传入的参数非可见性时,视为桶名并直接返回
      */
-    resolveBucket(type: BucketType): string {
-        return type === 'public' ? this.opts.options.bucketPublic : this.opts.options.bucketPrivate;
+    resolveBucket(visibilityOrName: BucketType | string): string {
+        if (
+            visibilityOrName !== 'staging' &&
+            visibilityOrName !== 'public' &&
+            visibilityOrName !== 'private'
+        )
+            return visibilityOrName;
+        return this.bucketMap[visibilityOrName];
     }
 
     /** 内容寻址暂存桶名 */
@@ -109,8 +124,7 @@ export class StorageService {
         contentType: string,
         expiresIn = DEFAULT_PRESIGN_EXPIRES
     ): Promise<string> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         return getSignedUrl(
             this.s3Client,
             new PutObjectCommand({ Bucket: bucketName, Key: key, ContentType: contentType }),
@@ -160,12 +174,9 @@ export class StorageService {
         destBucket: BucketType | string,
         destKey: string
     ): Promise<void> {
-        const dstBucket =
-            destBucket === 'public' || destBucket === 'private'
-                ? this.resolveBucket(destBucket)
-                : destBucket;
-        await this.copyObject(this.stagingBucket, sha256Hex, dstBucket, destKey);
-        await this.deleteObject(this.stagingBucket, sha256Hex);
+        const dstBucket = this.resolveBucket(destBucket);
+        await this.copyObject('staging', sha256Hex, dstBucket, destKey);
+        await this.deleteObject('staging', sha256Hex);
     }
 
     /**
@@ -179,8 +190,7 @@ export class StorageService {
         key: string,
         expiresIn = DEFAULT_PRESIGN_EXPIRES
     ): Promise<string> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         return getSignedUrl(this.s3Client, new GetObjectCommand({ Bucket: bucketName, Key: key }), {
             expiresIn,
         });
@@ -197,8 +207,7 @@ export class StorageService {
         body: Buffer | Uint8Array | string,
         contentType?: string
     ): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(
                 new PutObjectCommand({
@@ -226,8 +235,7 @@ export class StorageService {
         contentType?: string,
         onProgress?: (loaded: number, total?: number) => void
     ): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             const upload = new Upload({
                 client: this.s3Client,
@@ -253,8 +261,7 @@ export class StorageService {
      * 下载文件为 Buffer（小文件）
      */
     async getObject(bucket: BucketType | string, key: string): Promise<Buffer> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             const resp = await this.s3Client.send(
                 new GetObjectCommand({ Bucket: bucketName, Key: key })
@@ -277,8 +284,7 @@ export class StorageService {
      * 通过 PassThrough 中继转换为标准 Node.js Readable，避免序列化循环引用错误。
      */
     async getObjectStream(bucket: BucketType | string, key: string): Promise<Readable> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         let resp;
         try {
             resp = await this.s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
@@ -301,8 +307,7 @@ export class StorageService {
      * 删除单个文件
      */
     async deleteObject(bucket: BucketType | string, key: string): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
             this.logger.log(`Object deleted: ${bucketName}/${key}`);
@@ -316,8 +321,7 @@ export class StorageService {
      * 批量删除文件（最多 1000 个）
      */
     async deleteObjects(bucket: BucketType | string, keys: string[]): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(
                 new DeleteObjectsCommand({
@@ -336,8 +340,7 @@ export class StorageService {
      * 检查文件是否存在（HEAD 请求，不传输文件内容）
      */
     async objectExists(bucket: BucketType | string, key: string): Promise<boolean> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(new HeadObjectCommand({ Bucket: bucketName, Key: key }));
             return true;
@@ -354,8 +357,7 @@ export class StorageService {
      * 若对象不存在则抛出 StorageObjectNotFoundException。
      */
     async getObjectSize(bucket: BucketType | string, key: string): Promise<number> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             const resp = await this.s3Client.send(
                 new HeadObjectCommand({ Bucket: bucketName, Key: key })
@@ -378,14 +380,8 @@ export class StorageService {
         destBucket: BucketType | string,
         destKey: string
     ): Promise<void> {
-        const srcBucket =
-            sourceBucket === 'public' || sourceBucket === 'private'
-                ? this.resolveBucket(sourceBucket)
-                : sourceBucket;
-        const dstBucket =
-            destBucket === 'public' || destBucket === 'private'
-                ? this.resolveBucket(destBucket)
-                : destBucket;
+        const srcBucket = this.resolveBucket(sourceBucket);
+        const dstBucket = this.resolveBucket(destBucket);
         try {
             await this.s3Client.send(
                 new CopyObjectCommand({
@@ -418,8 +414,7 @@ export class StorageService {
         partCount: number,
         expiresIn = DEFAULT_PRESIGN_EXPIRES
     ): Promise<{ uploadId: string; partUrls: PartPresignResult[] }> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             const { UploadId } = await this.s3Client.send(
                 new CreateMultipartUploadCommand({
@@ -463,11 +458,9 @@ export class StorageService {
         key: string,
         uploadId: string,
         totalParts: number,
-        completedPartNumbers: number[],
         expiresIn = DEFAULT_PRESIGN_EXPIRES
     ): Promise<{ completedParts: ListedPart[]; partUrls: PartPresignResult[] }> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
 
         // 从 S3 查询已完成的分片（权威来源）
         const { Parts = [] } = await this.s3Client.send(
@@ -513,8 +506,7 @@ export class StorageService {
         uploadId: string,
         parts: UploadPart[]
     ): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(
                 new CompleteMultipartUploadCommand({
@@ -542,8 +534,7 @@ export class StorageService {
         key: string,
         uploadId: string
     ): Promise<void> {
-        const bucketName =
-            bucket === 'public' || bucket === 'private' ? this.resolveBucket(bucket) : bucket;
+        const bucketName = this.resolveBucket(bucket);
         try {
             await this.s3Client.send(
                 new AbortMultipartUploadCommand({
