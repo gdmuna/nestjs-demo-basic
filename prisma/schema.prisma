@@ -18,6 +18,7 @@ model User {
   status       UserStatus @default(ACTIVE)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
   bannedUntil  DateTime?
   bannedReason String?
 
@@ -47,6 +48,7 @@ model UserProfile {
   birthday   DateTime?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
+  deletedAt  DateTime?
 
   user   User  @relation(fields: [userId], references: [id])
   avatar File? @relation(fields: [avatarId], references: [id])
@@ -79,16 +81,21 @@ enum UserStatusOperatorType {
 }
 
 model File {
-  id          String         @id @default(uuid(7)) @db.Uuid
-  userId      String         @db.Uuid
-  domain      FileDomain
-  visibility  FileVisibility
-  bucket      String
-  key         String
-  filename    String
-  contentType String
-  status      FileStatus     @default(PENDING)
-  createdAt   DateTime       @default(now())
+  id         String         @id @default(uuid(7)) @db.Uuid
+  userId     String         @db.Uuid
+  domain     FileDomain
+  bucket     String
+  bucketType BucketType
+  bucketKey  String
+  visibility FileVisibility
+  filename   String
+  mimeType   String
+  status     FileStatus     @default(PENDING)
+  size       Int?
+  checksum   String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
 
   user          User          @relation(fields: [userId], references: [id])
   profileAvatar UserProfile[]
@@ -97,19 +104,33 @@ model File {
   @@index([status, createdAt])
 }
 
-enum FileStatus {
-  PENDING
-  ACTIVE
-  DELETED
+enum FileDomain {
+  USER_PROFILE_IMAGE
+  USER_POST_ATTACHMENT
+  USER_POST_DOCUMENT
+  USER_POST_IMAGE
+  USER_POST_VIDEO
+  USER_COMMENT_IMAGE
+  USER_COMMENT_VIDEO
+  USER_TODO_ATTACHMENT
+  USER_TODO_DOCUMENT
+  USER_TODO_IMAGE
+  USER_TODO_VIDEO
 }
 
-enum FileDomain {
-  AVATAR
-  DOCUMENT
-  VIDEO
+enum BucketType {
+  PUBLIC
+  PRIVATE
+  STAGING
 }
 
 enum FileVisibility {
   PUBLIC
   PRIVATE
+}
+
+enum FileStatus {
+  PENDING
+  ACTIVE
+  DELETED
 }
