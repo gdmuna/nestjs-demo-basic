@@ -4,6 +4,7 @@ import { FileRepository } from '@/modules/file/file.repository.js';
 import { ImageStrategy } from '@/modules/file/strategies/image.strategy.js';
 import { VideoStrategy } from '@/modules/file/strategies/video.strategy.js';
 import { DocumentStrategy } from '@/modules/file/strategies/document.strategy.js';
+import type { StrategyRegistry } from '@/modules/file/strategies/strategy-registry.js';
 import {
     FileInvalidDomainException,
     FileInvalidTypeException,
@@ -30,6 +31,7 @@ const mockStorageService: Mocked<
         | 'deleteObjects'
         | 'objectExists'
         | 'copyObject'
+        | 'resolveBucket'
         // | 'promoteFromStaging'
         // | 'initMultipartUpload'
         // | 'getResumablePartUrls'
@@ -49,6 +51,7 @@ const mockStorageService: Mocked<
     deleteObjects: vi.fn(),
     objectExists: vi.fn(),
     copyObject: vi.fn(),
+    resolveBucket: vi.fn((v: string) => v),
     // promoteFromStaging: vi.fn(),
     // initMultipartUpload: vi.fn(),
     // getResumablePartUrls: vi.fn(),
@@ -73,9 +76,14 @@ const mockFileRepo: Mocked<
     softDeleteMany: vi.fn(),
 };
 
-const mockImageStrategy = new ImageStrategy();
-const mockVideoStrategy = new VideoStrategy();
-const mockDocumentStrategy = new DocumentStrategy();
+const mockImageStrategy = new ImageStrategy('USER_PROFILE_IMAGE' as any);
+const mockVideoStrategy = new VideoStrategy('USER_POST_VIDEO' as any);
+const mockDocumentStrategy = new DocumentStrategy('USER_POST_DOCUMENT' as any);
+
+const mockStrategyRegistry: Mocked<Pick<StrategyRegistry, 'resolve' | 'listAll'>> = {
+    resolve: vi.fn(),
+    listAll: vi.fn(),
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -90,9 +98,7 @@ function buildService() {
         mockFileRepo as unknown as FileRepository,
         mockCacheManager as any,
         mockConfigService as any,
-        mockDocumentStrategy,
-        mockImageStrategy,
-        mockVideoStrategy
+        mockStrategyRegistry as unknown as StrategyRegistry
     );
 }
 
@@ -100,9 +106,9 @@ function makeFileRecord(overrides: Partial<Record<string, any>> = {}) {
     return {
         id: 'file_1',
         userId: 'u_1',
-        domain: 'AVATAR',
+        domain: 'USER_PROFILE_IMAGE',
         bucket: 'public',
-        key: 'images/00000000-0000-7000-0000-000000000001',
+        bucketKey: 'images/00000000-0000-7000-0000-000000000001',
         filename: 'photo.png',
         contentType: 'image/png',
         status: 'ACTIVE',
@@ -123,6 +129,13 @@ describe('FileService', () => {
         mockCacheManager.set.mockResolvedValue(undefined);
         mockCacheManager.del.mockResolvedValue(undefined);
         mockCacheManager.get.mockResolvedValue(undefined);
+        mockStorageService.resolveBucket.mockImplementation((v: string) => v.toLowerCase());
+        mockStrategyRegistry.resolve.mockImplementation((domain: string) => {
+            if (domain === 'USER_PROFILE_IMAGE') return mockImageStrategy;
+            if (domain === 'USER_POST_VIDEO') return mockVideoStrategy;
+            if (domain === 'USER_POST_DOCUMENT') return mockDocumentStrategy;
+            throw new FileInvalidDomainException({ message: `Unknown domain: ${domain}` });
+        });
         service = buildService();
     });
 
@@ -134,7 +147,7 @@ describe('FileService', () => {
             mockFileRepo.create.mockResolvedValue(makeFileRecord({ id: 'file_new' }));
 
             const result = await service.getPresignedUploadUrl('u_1', {
-                domain: 'AVATAR',
+                domain: 'USER_PROFILE_IMAGE',
                 contentType: 'image/png',
                 filename: 'photo.png',
                 fileSize: 204800,
@@ -150,7 +163,11 @@ describe('FileService', () => {
                 'image/png'
             );
             expect(mockFileRepo.create).toHaveBeenCalledWith(
-                expect.objectContaining({ userId: 'u_1', domain: 'AVATAR', bucket: 'public' })
+                expect.objectContaining({
+                    userId: 'u_1',
+                    domain: 'USER_PROFILE_IMAGE',
+                    bucket: 'public',
+                })
             );
         });
 
@@ -161,7 +178,7 @@ describe('FileService', () => {
             );
 
             const result = await service.getPresignedUploadUrl('u_2', {
-                domain: 'VIDEO',
+                domain: 'USER_POST_VIDEO',
                 contentType: 'video/mp4',
                 filename: 'clip.mp4',
                 fileSize: 10485760,
@@ -188,7 +205,7 @@ describe('FileService', () => {
         it('should throw FileInvalidTypeException for invalid content type', async () => {
             await expect(
                 service.getPresignedUploadUrl('u_1', {
-                    domain: 'AVATAR',
+                    domain: 'USER_PROFILE_IMAGE',
                     contentType: 'video/mp4',
                     filename: 'video.mp4',
                     fileSize: 204800,
@@ -201,7 +218,7 @@ describe('FileService', () => {
             mockFileRepo.create.mockResolvedValue(makeFileRecord({ id: 'file_std' }));
 
             const result = await service.getPresignedUploadUrl('u_1', {
-                domain: 'AVATAR',
+                domain: 'USER_PROFILE_IMAGE',
                 contentType: 'image/png',
                 filename: 'photo.png',
                 fileSize: 204800,
@@ -277,7 +294,11 @@ describe('FileService', () => {
     describe('getPresignedDownloadUrl', () => {
         it('should return download presigned URL', async () => {
             mockFileRepo.findById.mockResolvedValue(
-                makeFileRecord({ domain: 'video', bucket: 'private', key: 'videos/u_1/123.mp4' })
+                makeFileRecord({
+                    domain: 'video',
+                    bucket: 'private',
+                    bucketKey: 'videos/u_1/123.mp4',
+                })
             );
             mockStorageService.getDownloadUrl.mockResolvedValue('https://s3.example.com/download');
 
@@ -300,7 +321,7 @@ describe('FileService', () => {
     describe('getPublicUrl', () => {
         it('should return public URL', async () => {
             mockFileRepo.findById.mockResolvedValue(
-                makeFileRecord({ key: 'avatars/u_1/photo.png' })
+                makeFileRecord({ bucketKey: 'avatars/u_1/photo.png' })
             );
             mockStorageService.getPublicUrl.mockReturnValue(
                 'https://cdn.example.com/public/avatars/u_1/photo.png'
@@ -319,42 +340,56 @@ describe('FileService', () => {
         it('should upload and return fileId', async () => {
             mockStorageService.putObject.mockResolvedValue(undefined);
             mockFileRepo.create.mockResolvedValue(makeFileRecord({ id: 'file_server' }));
-            mockFileRepo.updateStatus.mockResolvedValue(makeFileRecord({ status: 'ACTIVE' }));
 
-            const result = await service.serverUpload(
-                'u_1',
-                { domain: 'AVATAR', filename: 'photo.jpg' } as any,
-                Buffer.from('data'),
-                'image/jpeg'
-            );
+            const mockStrategy = {
+                domain: 'USER_PROFILE_IMAGE',
+                visibility: 'PUBLIC',
+                bucketType: 'PUBLIC',
+                bucketKeyPrefix: 'images/profile/',
+                listDomains: vi.fn(),
+                resolveKey: vi.fn((id: string) => 'images/profile/' + id),
+                validate: vi.fn(),
+                createUploadHandler: vi.fn(),
+                getHandler: vi.fn(),
+                getHandlerType: vi.fn().mockReturnValue('buffer'),
+                getData: vi.fn(),
+                getFiles: vi.fn().mockReturnValue([
+                    {
+                        id: '00000000-0000-7000-0000-000000000001',
+                        filename: 'photo.jpg',
+                        buffer: Buffer.from('data'),
+                        mimetype: 'image/jpeg',
+                    },
+                ]),
+            } as any;
 
-            expect(result).toEqual({ fileId: 'file_server' });
+            const result = await service.serverUpload('u_1', mockStrategy);
+
+            expect(result).toEqual([{ fileId: 'file_server' }]);
             expect(mockStorageService.putObject).toHaveBeenCalledWith(
                 'public',
-                expect.stringContaining('images/'),
+                'images/profile/00000000-0000-7000-0000-000000000001',
                 expect.any(Buffer),
                 'image/jpeg'
             );
-            expect(mockFileRepo.updateStatus).toHaveBeenCalledWith('file_server', 'ACTIVE');
         });
     });
 
     // ── proxyDownload ────────────────────────────────────────────────────────
 
     describe('proxyDownload', () => {
-        it('should use Buffer when file size <= 5MB', async () => {
-            const buf = Buffer.from('small content');
+        it('should use Stream (buffer path is disabled)', async () => {
+            const stream = new Readable({ read() {} });
             mockFileRepo.findById.mockResolvedValue(makeFileRecord({ filename: 'photo.png' }));
-            mockStorageService.getObjectSize.mockResolvedValue(1024 * 1024); // 1MB
-            mockStorageService.getObject.mockResolvedValue(buf);
+            mockStorageService.getObjectStream.mockResolvedValue(stream);
 
             const result = await service.proxyDownload('file_1');
 
-            expect(result.isStream).toBe(false);
-            expect(result.data).toBe(buf);
+            expect(result.isStream).toBe(true);
+            expect(result.data).toBe(stream);
             expect(result.filename).toBe('photo.png');
-            expect(mockStorageService.getObject).toHaveBeenCalled();
-            expect(mockStorageService.getObjectStream).not.toHaveBeenCalled();
+            expect(mockStorageService.getObjectStream).toHaveBeenCalled();
+            expect(mockStorageService.getObject).not.toHaveBeenCalled();
         });
 
         it('should use Stream when file size > 5MB', async () => {
@@ -402,10 +437,10 @@ describe('FileService', () => {
         it('should call deleteObjects for multiple files in same bucket', async () => {
             mockFileRepo.findById
                 .mockResolvedValueOnce(
-                    makeFileRecord({ id: 'file_1', key: 'a.pdf', bucket: 'private' })
+                    makeFileRecord({ id: 'file_1', bucketKey: 'a.pdf', bucket: 'private' })
                 )
                 .mockResolvedValueOnce(
-                    makeFileRecord({ id: 'file_2', key: 'b.pdf', bucket: 'private' })
+                    makeFileRecord({ id: 'file_2', bucketKey: 'b.pdf', bucket: 'private' })
                 );
             mockStorageService.deleteObjects.mockResolvedValue(undefined);
             mockFileRepo.softDeleteMany.mockResolvedValue({ count: 2 });
@@ -448,26 +483,26 @@ describe('FileService', () => {
 
     // ── copyFile ─────────────────────────────────────────────────────────────
 
-    describe('copyFile', () => {
-        it('should copy file and return new fileId', async () => {
-            mockFileRepo.findById.mockResolvedValue(makeFileRecord());
-            mockStorageService.copyObject.mockResolvedValue(undefined);
-            mockFileRepo.create.mockResolvedValue(
-                makeFileRecord({ id: 'file_copy', domain: 'AVATAR' })
-            );
-            mockFileRepo.updateStatus.mockResolvedValue(
-                makeFileRecord({ id: 'file_copy', status: 'ACTIVE' })
-            );
-
-            const result = await service.copyFile('u_1', {
-                fileId: 'file_1',
-                destDomain: 'AVATAR',
-            } as any);
-
-            expect(result).toEqual({ fileId: 'file_copy' });
-            expect(mockStorageService.copyObject).toHaveBeenCalled();
-        });
-    });
+    // describe('copyFile', () => {
+    //     it('should copy file and return new fileId', async () => {
+    //         mockFileRepo.findById.mockResolvedValue(makeFileRecord());
+    //         mockStorageService.copyObject.mockResolvedValue(undefined);
+    //         mockFileRepo.create.mockResolvedValue(
+    //             makeFileRecord({ id: 'file_copy', domain: 'AVATAR' })
+    //         );
+    //         mockFileRepo.updateStatus.mockResolvedValue(
+    //             makeFileRecord({ id: 'file_copy', status: 'ACTIVE' })
+    //         );
+    //
+    //         const result = await service.copyFile('u_1', {
+    //             fileId: 'file_1',
+    //             destDomain: 'AVATAR',
+    //         } as any);
+    //
+    //         expect(result).toEqual({ fileId: 'file_copy' });
+    //         expect(mockStorageService.copyObject).toHaveBeenCalled();
+    //     });
+    // });
 
     // ── initMultipartUpload (disabled) ──────────────────────────────────────
 

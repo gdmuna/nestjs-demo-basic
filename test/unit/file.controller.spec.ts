@@ -1,6 +1,9 @@
 import type { Mocked } from 'vitest';
 import { FileController } from '@/modules/file/file.controller.js';
 import { FileService } from '@/modules/file/file.service.js';
+import type { StrategyRegistry } from '@/modules/file/strategies/strategy-registry.js';
+import type { IFileStrategy } from '@/modules/file/strategies/strategy.interface.js';
+import { FileDomain } from '@root/prisma/generated/enums.js';
 import { Readable } from 'stream';
 
 // ─── Mock FileService ─────────────────────────────────────────────────────────
@@ -16,7 +19,7 @@ const mockFileService: Mocked<
         | 'proxyDownload'
         | 'fileExists'
         | 'deleteFiles'
-        | 'copyFile'
+        // | 'copyFile'
         // | 'initMultipartUpload'
         // | 'resumeMultipartUpload'
         // | 'completeMultipartUpload'
@@ -31,17 +34,27 @@ const mockFileService: Mocked<
     proxyDownload: vi.fn(),
     fileExists: vi.fn(),
     deleteFiles: vi.fn(),
-    copyFile: vi.fn(),
+    // copyFile: vi.fn(),
     // initMultipartUpload: vi.fn(),
     // resumeMultipartUpload: vi.fn(),
     // completeMultipartUpload: vi.fn(),
     // abortMultipartUpload: vi.fn(),
 };
 
+// ─── Mock StrategyRegistry ─────────────────────────────────────────────────
+
+const mockStrategyRegistry: Mocked<Pick<StrategyRegistry, 'resolve' | 'listAll'>> = {
+    resolve: vi.fn(),
+    listAll: vi.fn(),
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildController() {
-    return new FileController(mockFileService as unknown as FileService);
+    return new FileController(
+        mockFileService as unknown as FileService,
+        mockStrategyRegistry as unknown as StrategyRegistry
+    );
 }
 
 const mockRequest: any = { jwtClaim: { sub: 'u_1' } };
@@ -64,8 +77,9 @@ describe('FileController (unit)', () => {
             mockFileService.getPresignedUploadUrl.mockResolvedValue(mockResult);
 
             const result = await controller.presignUpload(
+                mockRequest,
                 { domain: 'avatar', contentType: 'image/png', filename: 'photo.png' } as any,
-                mockRequest
+                'avatar' as any
             );
 
             expect(result).toBe(mockResult);
@@ -84,10 +98,11 @@ describe('FileController (unit)', () => {
                 'https://s3.example.com/download'
             );
 
-            const result = await controller.presignDownload({
-                fileId: 'file_1',
-                expiresIn: 3600,
-            } as any);
+            const result = await controller.presignDownload(
+                mockRequest,
+                { fileId: 'file_1', expiresIn: 3600 } as any,
+                'file_1'
+            );
 
             expect(result).toBe('https://s3.example.com/download');
             expect(mockFileService.getPresignedDownloadUrl).toHaveBeenCalledWith(
@@ -104,7 +119,7 @@ describe('FileController (unit)', () => {
                 'https://cdn.example.com/public/avatars/u_1/photo.jpg'
             );
 
-            const result = await controller.publicUrl('file_1');
+            const result = await controller.publicUrl(mockRequest, {} as any, 'file_1');
 
             expect(result).toBe('https://cdn.example.com/public/avatars/u_1/photo.jpg');
             expect(mockFileService.getPublicUrl).toHaveBeenCalledWith('file_1');
@@ -118,7 +133,7 @@ describe('FileController (unit)', () => {
             const mockRecord = { id: 'file_1', status: 'ACTIVE' } as any;
             mockFileService.confirmUpload.mockResolvedValue(mockRecord);
 
-            const result = await controller.confirmUpload('file_1');
+            const result = await controller.confirmUpload(mockRequest, {} as any, 'file_1');
 
             expect(result).toBe(mockRecord);
             expect(mockFileService.confirmUpload).toHaveBeenCalledWith(
@@ -131,31 +146,31 @@ describe('FileController (unit)', () => {
 
     describe('serverUpload', () => {
         it('should call serverUpload with file buffer and mimetype', async () => {
-            const mockResult = { fileId: 'file_server' };
-            mockFileService.serverUpload.mockResolvedValue(mockResult);
+            const mockResult = [{ fileId: 'file_server' }];
+            mockFileService.serverUpload.mockResolvedValue(mockResult as any);
 
-            const fileBuffer = Buffer.from('data');
-            async function* mockParts() {
-                yield {
-                    type: 'file' as const,
-                    fieldname: 'file',
-                    mimetype: 'image/jpeg',
-                    toBuffer: async () => fileBuffer,
-                };
-                yield { type: 'field' as const, fieldname: 'domain', value: 'AVATAR' };
-                yield { type: 'field' as const, fieldname: 'filename', value: 'photo.jpg' };
-            }
-            const req: any = { jwtClaim: { sub: 'u_1' }, parts: mockParts };
+            const mockHandler = { type: 'file' as const };
+            const mockStrategy: Partial<IFileStrategy> = {
+                createUploadHandler: vi.fn().mockResolvedValue(mockHandler),
+            };
+            mockStrategyRegistry.resolve.mockReturnValue(mockStrategy as IFileStrategy);
 
-            const result = await controller.serverUpload(req);
+            const req: any = { jwtClaim: { sub: 'u_1' } };
+
+            const result = await controller.serverUpload(req, FileDomain.USER_PROFILE_IMAGE);
 
             expect(result).toBe(mockResult);
-            expect(mockFileService.serverUpload).toHaveBeenCalledWith(
-                'u_1',
-                expect.objectContaining({ domain: 'AVATAR' }),
-                fileBuffer,
-                'image/jpeg'
+            expect(mockStrategyRegistry.resolve).toHaveBeenCalledWith(
+                FileDomain.USER_PROFILE_IMAGE
             );
+            expect(mockStrategy.createUploadHandler).toHaveBeenCalledWith(
+                req,
+                expect.objectContaining({
+                    resolveType: 'file',
+                    domain: FileDomain.USER_PROFILE_IMAGE,
+                })
+            );
+            expect(mockFileService.serverUpload).toHaveBeenCalledWith('u_1', mockStrategy);
         });
     });
 
