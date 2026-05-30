@@ -47,7 +47,8 @@ export default [
             'prefer-const': 'error', // 优先 const
             'no-var': 'error', // 禁用 var
             eqeqeq: ['error', 'always'], // 使用 === 而非 ==
-            // 'no-redeclare': 'off', // 允许变量重声明
+            'no-redeclare': 'off', // 关闭 JS 版（不理解 TS 重载语法）
+            '@typescript-eslint/no-redeclare': 'error', // 换用 TS 版：允许函数重载，但仍捕获真正的重复声明
 
             // 关闭过度的规则
             '@typescript-eslint/explicit-function-return-types': 'off', // 不强制函数返回类型

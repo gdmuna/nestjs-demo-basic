@@ -8,7 +8,7 @@ warn() { printf "%-12b  %b\n" "${YELLOW}[GitHook]" "[WARN] $1${RESET}"; }
 log "执行 Pre-commit hook"
 
 # 记录已暂存的 env 文件（排除 .env.example）
-staged_env_files=$(git diff --cached --name-only -- ':**/.env.*' ':!**/.env.example')
+staged_env_files=$(git diff --cached --name-only -- ':**/.env.*' ':!**/.env.example' ':!**/.env.*.local')
 
 # 如果有暂存的 env 文件，先加密它们
 if [ -n "$staged_env_files" ]; then
