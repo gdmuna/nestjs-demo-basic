@@ -1,7 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import { FileDomain } from '@root/prisma/generated/enums.js';
-import { MultipartFile } from '@fastify/multipart';
+// import { MultipartFile } from '@fastify/multipart';
 
 // ─── 上传预签名（客户端直传） ───────────────────────────────────────────────────
 
@@ -189,3 +189,26 @@ export const ServerUploadDtoSchema = z
     .meta({ description: '服务端直接上传文件（小文件 ≤5MB）的请求 Dto' });
 
 export class ServerUploadDto extends createZodDto(ServerUploadDtoSchema) {}
+
+export default {
+    PresignUploadDto,
+    PresignUploadDtoSchema,
+    ConfirmUploadDto,
+    ConfirmUploadDtoSchema,
+    PresignDownloadDto,
+    PresignDownloadDtoSchema,
+    MultipartInitDto,
+    MultipartInitDtoSchema,
+    ResumablePartUrlsDto,
+    ResumablePartUrlsDtoSchema,
+    CompleteMultipartDto,
+    CompleteMultipartDtoSchema,
+    AbortMultipartDto,
+    AbortMultipartDtoSchema,
+    DeleteFilesDto,
+    DeleteFilesDtoSchema,
+    CopyFileDto,
+    CopyFileDtoSchema,
+    ServerUploadDto,
+    ServerUploadDtoSchema,
+};

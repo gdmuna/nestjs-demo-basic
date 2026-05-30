@@ -9,15 +9,15 @@ import {
     // ResumablePartUrlsDto,
     // CompleteMultipartDto,
     // AbortMultipartDto,
-    ServerUploadDto,
-    ServerUploadDtoSchema,
+    // ServerUploadDto,
+    // ServerUploadDtoSchema,
 } from './file.dto.js';
 
 import { ApiRoute } from '@/common/decorators/index.js';
 
 import { Logger } from '@/common/services/logger.service.js';
 
-import { sleep } from '@/common/utils/index.js';
+import { FileDomain } from '@root/prisma/generated/enums.js';
 
 import {
     Body,
@@ -34,13 +34,12 @@ import {
     Res,
     StreamableFile,
     BadRequestException,
-    Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBody } from '@nestjs/swagger';
 
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
-import { VideoStrategy } from './strategies/video.strategy.js';
+import { StrategyRegistry } from './strategies/index.js';
 
 @Controller('files')
 @ApiTags('文件模块')
@@ -48,107 +47,101 @@ export class FileController {
     logger = new Logger(FileController.name);
     constructor(
         private readonly fileService: FileService,
-        private readonly videoStrategy: VideoStrategy
+        private readonly strategyRegistry: StrategyRegistry
     ) {}
 
     // ─── 预签名 URL ────────────────────────────────────────────────────────────
 
-    @Post('presign/upload')
+    // @Post('presign/upload')
+    @Get('upload/:domain/presign')
     @ApiRoute({
         auth: 'required',
         summary: '获取文件上传预签名 URL',
         description:
             '根据提供的文件信息生成预签名 URL 和文件记录 ID（fileId）。客户端使用该 URL 直接上传文件到存储服务后，需调用 PATCH /files/:fileId/confirm 确认上传完成。',
     })
-    presignUpload(@Body() dto: PresignUploadDto, @Req() req: FastifyRequest) {
+    presignUpload(
+        @Req() req: FastifyRequest,
+        @Body() dto: PresignUploadDto,
+        @Param('domain') domain: FileDomain
+    ) {
         return this.fileService.getPresignedUploadUrl(req.jwtClaim!.sub, dto);
     }
 
-    @Post('presign/download')
+    // @Post('presign/download')
+    @Get('download/:fileId/presign')
     @ApiRoute({
         auth: 'required',
         summary: '获取私有文件下载预签名 URL',
         description: '为私有存储桶中的文件生成限时预签名下载 URL。',
     })
-    presignDownload(@Body() dto: PresignDownloadDto) {
+    presignDownload(
+        @Req() req: FastifyRequest,
+        @Body() dto: PresignDownloadDto,
+        @Param('fileId') fileId: string
+    ) {
         return this.fileService.getPresignedDownloadUrl(dto);
     }
 
-    @Get(':fileId/public-url')
+    // @Get(':fileId/public-url')
+    @Get('download/:fileId/public')
     @ApiRoute({
         auth: 'public',
         summary: '获取公开文件直接访问 URL',
         description: '拼接公开存储桶中文件的直接访问 URL（无签名，依赖 CDN 公开访问配置）。',
     })
-    publicUrl(@Param('fileId') fileId: string) {
+    publicUrl(@Req() req: FastifyRequest, @Body() dto: any, @Param('fileId') fileId: string) {
         return this.fileService.getPublicUrl(fileId);
     }
 
     // ─── 确认上传 ──────────────────────────────────────────────────────────────
 
-    @Post(':fileId/confirm')
+    @Post('upload/:fileId/confirm')
     @ApiRoute({
         auth: 'required',
         summary: '确认客户端直传完成',
         description: '客户端完成 S3 直传后调用此接口，将文件记录从 PENDING 激活为 ACTIVE。',
     })
-    confirmUpload(@Param('fileId') fileId: string) {
+    confirmUpload(@Req() req: FastifyRequest, @Body() body: any, @Param('fileId') fileId: string) {
         const dto: ConfirmUploadDto = { fileId };
         return this.fileService.confirmUpload(dto);
     }
 
     // ─── 服务端直接操作 ────────────────────────────────────────────────────────
 
-    @Post('server-upload/:domain')
+    // @Post('server-upload/:domain')
+    @Post('upload/:domain')
     @ApiRoute({
         auth: 'required',
         summary: '服务端直接上传文件（小文件 ≤5MB）',
         description:
             '由服务端接收文件后直接写入对象存储，适用于服务端生成的文件或需要服务端处理的场景。返回文件记录 ID（fileId）。',
         consumes: ['multipart/form-data'],
+        deprecated: true,
     })
-    async serverUpload(
-        @Req() req: FastifyRequest,
-        @Param('domain') domain: string,
-        @Query('filename') filename?: string
-    ) {
-        // let fileBuffer: Buffer | null = null;
-        // let fileMimetype = '';
-        // let domain: string | undefined;
-        // let filename: string | undefined;
-
-        // for await (const part of req.parts()) {
-        //     console.log('Received part:', part);
-        //     if (part.type === 'file') {
-        //         fileBuffer = await part.toBuffer();
-        //         fileMimetype = part.mimetype;
-        //     } else {
-        //         if (part.fieldname === 'domain') domain = String(part.value);
-        //         if (part.fieldname === 'filename') filename = String(part.value);
-        //     }
-        // }
-
-        // if (!fileBuffer) {
-        //     throw new BadRequestException('请上传文件');
-        // }
-
-        // const parseResult = ServerUploadDtoSchema.safeParse({ domain, filename, file: undefined });
-        // if (!parseResult.success) {
-        //     throw new BadRequestException(parseResult.error.message);
-        // }
-
-        // return this.fileService.serverUpload(
-        //     req.jwtClaim!.sub,
-        //     parseResult.data as ServerUploadDto,
-        //     fileBuffer,
-        //     fileMimetype
-        // );
-
-        const handler = await this.videoStrategy.createHandler(req, { resolveType: 'file' });
-        return await this.fileService.serverUpload(req.jwtClaim!.sub, handler);
+    @ApiBody({
+        schema: {
+            type: 'object',
+            required: ['file'],
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: '要上传的文件',
+                },
+            },
+        },
+    })
+    async serverUpload(@Req() req: FastifyRequest, @Param('domain') domain: FileDomain) {
+        const strategy = this.strategyRegistry.resolve(domain);
+        if (!strategy.createUploadHandler) {
+            throw new BadRequestException(`Domain ${domain} 不支持服务端直传`);
+        }
+        await strategy.createUploadHandler(req, { resolveType: 'file', domain });
+        return this.fileService.serverUpload(req.jwtClaim!.sub, strategy);
     }
 
-    @Get(':fileId/proxy')
+    @Get('download/:fileId')
     @ApiRoute({
         auth: 'required',
         summary: '代理下载文件',
@@ -165,6 +158,18 @@ export class FileController {
         return new StreamableFile(data as any);
     }
 
+    @Delete()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiRoute({
+        auth: 'required',
+        summary: '删除文件（单个或批量）',
+        description:
+            '从对象存储删除文件并软删除数据库记录。fileIds 传入一个时删除单个文件，传入多个时批量删除（最多 1000 个）。',
+    })
+    deleteFiles(@Body() dto: DeleteFilesDto): Promise<void> {
+        return this.fileService.deleteFiles(dto);
+    }
+
     // @Head(':fileId/exists')
     // @ApiRoute({
     //     auth: 'required',
@@ -177,18 +182,6 @@ export class FileController {
     //         throw new NotFoundException(`文件 ${fileId} 不存在于对象存储`);
     //     }
     // }
-
-    @Delete()
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiRoute({
-        auth: 'required',
-        summary: '删除文件（单个或批量）',
-        description:
-            '从对象存储删除文件并软删除数据库记录。fileIds 传入一个时删除单个文件，传入多个时批量删除（最多 1000 个）。',
-    })
-    deleteFiles(@Body() dto: DeleteFilesDto): Promise<void> {
-        return this.fileService.deleteFiles(dto);
-    }
 
     // @Post('copy')
     // @ApiRoute({

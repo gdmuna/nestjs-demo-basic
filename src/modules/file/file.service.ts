@@ -1,28 +1,24 @@
 import { FileRepository } from './file.repository.js';
+import type {
+    AnyMultipartHandler,
+    MultipartFileBuffer,
+    SavedMultipartFileExtend,
+} from '@/common/utils/index.js';
+import { StrategyRegistry, IFileStrategy } from './strategies/index.js';
 import {
-    DocumentStrategy,
-    ImageStrategy,
-    VideoStrategy,
-    BufferMultipartHandler,
-    FileMultipartHandler,
-} from './strategies/index.js';
-import {
-    FileInvalidDomainException,
     FileRecordNotFoundException,
     // FileStagingNotFoundException,
 } from './file.exception.js';
-import { PROXY_SIZE_THRESHOLD } from './file.constant.js';
-import type { UploadStrategy } from './file.interface.js';
 import {
     PresignUploadDto,
     // MultipartInitDto,
     PresignDownloadDto,
     DeleteFilesDto,
-    CopyFileDto,
+    // CopyFileDto,
     // ResumablePartUrlsDto,
     // CompleteMultipartDto,
     // AbortMultipartDto,
-    ServerUploadDto,
+    // ServerUploadDto,
     ConfirmUploadDto,
 } from './file.dto.js';
 
@@ -33,7 +29,7 @@ import type {
 } from '@/infra/storage/storage.service.js';
 
 import type { FileModel } from '@root/prisma/generated/models/File.js';
-import { FileDomain, FileVisibility } from '@root/prisma/generated/enums.js';
+import { FileVisibility, FileDomain } from '@root/prisma/generated/enums.js';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -45,23 +41,13 @@ import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class FileService {
-    private readonly strategies: Record<FileDomain, any>;
-
     constructor(
         private readonly storageService: StorageService,
         private readonly fileRepo: FileRepository,
         private readonly cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly documentStrategy: DocumentStrategy,
-        private readonly imageStrategy: ImageStrategy,
-        private readonly videoStrategy: VideoStrategy
-    ) {
-        this.strategies = {
-            AVATAR: this.imageStrategy,
-            DOCUMENT: this.documentStrategy,
-            VIDEO: this.videoStrategy,
-        };
-    }
+        private readonly strategyRegistry: StrategyRegistry
+    ) {}
 
     // ─── 预签名 URL ────────────────────────────────────────────────────────────
 
@@ -79,10 +65,11 @@ export class FileService {
         userId: string,
         dto: PresignUploadDto
     ): Promise<{ fileId: string; uploadUrl: string }> {
-        const strategy = this.resolveStrategy(dto.domain);
+        const strategy = this.strategyRegistry.resolve(dto.domain);
         strategy.validate(dto);
-        const key = strategy.resolveKey(userId, dto.filename);
-        const bucket = strategy.getBucket() as BucketType;
+        const key = strategy.resolveKey(dto.filename);
+        const visibility = strategy.visibility;
+        const bucket = this.storageService.resolveBucket(visibility) as BucketType;
 
         // let uploadUrl: string;
         // if (dto.sha256) {
@@ -97,10 +84,11 @@ export class FileService {
             userId,
             domain: dto.domain,
             bucket,
-            key,
+            bucketKey: key,
+            bucketType: strategy.bucketType,
             filename: dto.filename,
-            contentType: dto.contentType,
-            visibility: bucket === 'public' ? FileVisibility.PUBLIC : FileVisibility.PRIVATE,
+            mimeType: dto.contentType,
+            visibility: strategy.visibility,
             // sha256: dto.sha256,
         });
 
@@ -158,14 +146,14 @@ export class FileService {
      */
     async getPresignedDownloadUrl(dto: PresignDownloadDto): Promise<string> {
         const record = await this.requireFile(dto.fileId);
-        return this.storageService.getDownloadUrl(record.bucket, record.key, dto.expiresIn);
+        return this.storageService.getDownloadUrl(record.bucket, record.bucketKey, dto.expiresIn);
     }
 
     /**
      * 获取公开文件的直接访问 URL（不带签名，依赖 CDN / publicBaseUrl）
      */
     async getPublicUrl(fileId: string): Promise<string> {
-        return this.requireFile(fileId).then((r) => this.storageService.getPublicUrl(r.key));
+        return this.requireFile(fileId).then((r) => this.storageService.getPublicUrl(r.bucketKey));
     }
 
     // ─── 服务端直接操作 ────────────────────────────────────────────────────────
@@ -174,68 +162,70 @@ export class FileService {
      * 服务端直接上传文件（小文件，≤5MB）
      * 创建并立即激活文件记录，返回 fileId。
      */
-    async serverUpload(
-        userId: string,
-        // dto: ServerUploadDto,
-        // body: Buffer | Uint8Array,
-        // contentType: string,
-        handler: BufferMultipartHandler | FileMultipartHandler
-    ): Promise<{ fileId: string }[]> {
-        const type = handler.type;
-        if (type === 'buffer') {
-            const files = handler.getFiles();
-            const metadata = handler.getMetadata();
-            const results = [];
-            for (const file of files) {
-                const id = uuidv7();
-                const key = `server-uploads/${id}`;
-                const bucket = this.storageService.resolveBucket(metadata.bucket);
-                await this.storageService.putObject(bucket, key, file.buffer, file.mimetype);
+    async serverUpload(userId: string, strategy: IFileStrategy): Promise<{ fileId: string }[]> {
+        // const handler = strategy.getHandler?.();
+        // if (!handler) {
+        //     throw new Error('该 Strategy 尚未创建上传处理器，请先调用 createUploadHandler');
+        // }
 
+        if (!strategy.getHandlerType) {
+            throw new Error('该 Strategy 尚未定义 getHandlerType 方法');
+        }
+
+        const handlerType = strategy.getHandlerType();
+
+        if (!handlerType) {
+            throw new Error('该 Strategy 尚未创建上传处理器，请先调用 createUploadHandler');
+        }
+
+        const visibility = strategy.visibility;
+        const bucket = this.storageService.resolveBucket(visibility);
+        const results: { fileId: string }[] = [];
+
+        if (handlerType === 'buffer') {
+            for (const file of (strategy.getFiles() ?? []) as MultipartFileBuffer[]) {
+                const key = strategy.resolveKey(file.id);
+                await this.storageService.putObject(bucket, key, file.buffer, file.mimetype);
                 const record = await this.fileRepo.create({
-                    id,
+                    id: file.id,
                     userId,
-                    domain: metadata.domain,
-                    visibility: metadata.visibility.toUpperCase(),
+                    domain: strategy.domain,
+                    visibility: strategy.visibility,
                     bucket,
-                    key,
+                    bucketKey: key,
+                    bucketType: strategy.bucketType,
                     filename: file.filename,
-                    contentType: file.mimetype,
+                    mimeType: file.mimetype,
                     status: 'ACTIVE',
                 });
                 results.push({ fileId: record.id });
             }
-            return results;
         } else {
-            const files = handler.getFiles();
-            const metadata = handler.getMetadata();
-            const results = [];
-            for (const file of files) {
-                const id = uuidv7();
-                const key = `server-uploads/${id}`;
-                const bucket = this.storageService.resolveBucket(metadata.visibility);
+            for (const file of (strategy.getFiles() ?? []) as SavedMultipartFileExtend[]) {
+                const key = strategy.resolveKey(uuidv7());
                 const diskStream = createReadStream(file.filepath);
                 try {
                     await this.storageService.uploadStream(bucket, key, diskStream, file.mimetype);
                 } finally {
                     unlink(file.filepath).catch(() => void 0);
                 }
-
                 const record = await this.fileRepo.create({
-                    id,
+                    id: file.id,
                     userId,
-                    domain: metadata.domain,
-                    visibility: metadata.visibility.toUpperCase(),
+                    domain: strategy.domain,
+                    visibility: strategy.visibility,
                     bucket,
-                    key,
+                    bucketKey: key,
+                    bucketType: strategy.bucketType,
                     filename: file.filename,
-                    contentType: file.mimetype,
+                    mimeType: file.mimetype,
                     status: 'ACTIVE',
                 });
                 results.push({ fileId: record.id });
             }
-            return results;
         }
+
+        return results;
 
         // const strategy = this.resolveStrategy(dto.domain);
         // strategy.validate({ contentType });
@@ -257,9 +247,6 @@ export class FileService {
 
     /**
      * 代理下载文件。
-     * 内部通过 HEAD 请求获取文件大小：
-     *   - ≤ PROXY_SIZE_THRESHOLD（5MB）→ Buffer（一次性读入内存，适合小文件）
-     *   - > PROXY_SIZE_THRESHOLD → Stream（流式传输，适合大文件/视频）
      */
     async proxyDownload(
         fileId: string
@@ -270,7 +257,7 @@ export class FileService {
         //     const buffer = await this.storageService.getObject(record.bucket, record.key);
         //     return { data: buffer, filename: record.filename, isStream: false };
         // }
-        const stream = await this.storageService.getObjectStream(record.bucket, record.key);
+        const stream = await this.storageService.getObjectStream(record.bucket, record.bucketKey);
         return { data: stream, filename: record.filename, isStream: true };
     }
 
@@ -279,7 +266,7 @@ export class FileService {
      */
     async fileExists(fileId: string): Promise<boolean> {
         const record = await this.requireFile(fileId);
-        return this.storageService.objectExists(record.bucket, record.key);
+        return this.storageService.objectExists(record.bucket, record.bucketKey);
     }
 
     /**
@@ -290,13 +277,13 @@ export class FileService {
         const records = await Promise.all(dto.fileIds.map((id) => this.requireFile(id)));
 
         if (records.length === 1) {
-            await this.storageService.deleteObject(records[0].bucket, records[0].key);
+            await this.storageService.deleteObject(records[0].bucket, records[0].bucketKey);
         } else {
             // 同一 bucket 内批量删除（按 bucket 分组）
             const byBucket = new Map<string, string[]>();
             for (const r of records) {
                 const keys = byBucket.get(r.bucket) ?? [];
-                keys.push(r.key);
+                keys.push(r.bucketKey);
                 byBucket.set(r.bucket, keys);
             }
             await Promise.all(
@@ -313,25 +300,25 @@ export class FileService {
      * 服务端复制文件（桶内或跨桶，不消耗带宽）
      * 在数据库中创建新的文件记录（ACTIVE），返回新 fileId。
      */
-    async copyFile(userId: string, dto: CopyFileDto): Promise<{ fileId: string }> {
-        const src = await this.requireFile(dto.fileId);
-        const destStrategy = this.resolveStrategy(dto.destDomain);
-        const destFilename = dto.destFilename ?? src.filename;
-        const destKey = destStrategy.resolveKey(userId, destFilename);
-        const destBucket = destStrategy.getBucket() as BucketType;
-        await this.storageService.copyObject(src.bucket, src.key, destBucket, destKey);
-        const newRecord = await this.fileRepo.create({
-            userId,
-            domain: dto.destDomain,
-            bucket: destBucket,
-            key: destKey,
-            filename: destFilename,
-            contentType: src.contentType,
-            visibility: destBucket === 'public' ? FileVisibility.PUBLIC : FileVisibility.PRIVATE,
-        });
-        await this.fileRepo.updateStatus(newRecord.id, 'ACTIVE');
-        return { fileId: newRecord.id };
-    }
+    // async copyFile(userId: string, dto: CopyFileDto): Promise<{ fileId: string }> {
+    //     const src = await this.requireFile(dto.fileId);
+    //     const destStrategy = this.resolveStrategy(dto.destDomain);
+    //     const destFilename = dto.destFilename ?? src.filename;
+    //     const destKey = destStrategy.resolveKey(userId, destFilename);
+    //     const destBucket = destStrategy.getBucket() as BucketType;
+    //     await this.storageService.copyObject(src.bucket, src.key, destBucket, destKey);
+    //     const newRecord = await this.fileRepo.create({
+    //         userId,
+    //         domain: dto.destDomain,
+    //         bucket: destBucket,
+    //         key: destKey,
+    //         filename: destFilename,
+    //         contentType: src.contentType,
+    //         visibility: destBucket === 'public' ? FileVisibility.PUBLIC : FileVisibility.PRIVATE,
+    //     });
+    //     await this.fileRepo.updateStatus(newRecord.id, 'ACTIVE');
+    //     return { fileId: newRecord.id };
+    // }
 
     // ─── 分片上传 ──────────────────────────────────────────────────────────────
 
@@ -429,14 +416,8 @@ export class FileService {
 
     // ─── 内部工具 ──────────────────────────────────────────────────────────────
 
-    private resolveStrategy(domain: FileDomain): UploadStrategy {
-        const strategy = this.strategies[domain];
-        if (!strategy) {
-            throw new FileInvalidDomainException({
-                message: `不支持的文件领域: ${domain}，支持：${Object.keys(this.strategies).join(', ')}`,
-            });
-        }
-        return strategy;
+    private resolveStrategy(domain: FileDomain): IFileStrategy {
+        return this.strategyRegistry.resolve(domain);
     }
 
     private async requireFile(fileId: string): Promise<FileModel> {
